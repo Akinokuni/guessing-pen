@@ -1,0 +1,19 @@
+# 测试配置 - 只启动 PostgREST
+version: '3.8'
+
+services:
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: test-postgrest
+    ports:
+      - "3001:3000"
+    environment:
+      # 直接使用编码后的连接字符串
+      PGRST_DB_URI: postgres://aki:20138990398QGL%40gmailcom@pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com:5432/aki
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: aki
+      PGRST_DB_POOL: 10
+      PGRST_SERVER_HOST: 0.0.0.0
+      PGRST_SERVER_PORT: 3000
+      PGRST_LOG_LEVEL: info
+    restart: "no"

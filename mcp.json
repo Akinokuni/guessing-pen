@@ -1,0 +1,281 @@
+{
+  "mcpServers": {
+    "ssh-mcp": {
+      "command": "python",
+      "args": [
+        "c:\\Documents\\AI\\mcp仓库\\agents\\mcp-ssh\\bridging_ssh_mcp.py"
+      ],
+      "cwd": "c:\\Documents\\AI\\mcp仓库\\agents\\mcp-ssh",
+      "env": {
+        "SSH_TIMEOUT": "30",
+        "SSH_CONFIG_PATH": "~/.ssh/config",
+        "SSH_KEY_PATH": "~/.ssh/id_rsa",
+        "DEBUG_MODE": "false",
+        "LOG_LEVEL": "INFO",
+        "MAX_CONNECTIONS": "10",
+        "KEEPALIVE_INTERVAL": "60",
+        "NODE_PATH": "agents/mcp-ssh/node_modules"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "ssh_list_connections",
+        "ssh_get_connection",
+        "ssh_execute_command"
+      ]
+    },
+    "filesystem": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-filesystem",
+        "--base-path",
+        "."
+      ],
+      "env": {},
+      "disabled": false,
+      "autoApprove": [
+        "read_file",
+        "list_directory"
+      ]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {
+        "FETCH_TIMEOUT": "30",
+        "MAX_RESPONSE_SIZE": "10MB"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "sqlite": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-sqlite",
+        "--db-path",
+        "database.db"
+      ],
+      "env": {
+        "MAX_ROWS": "1000",
+        "QUERY_TIMEOUT": "30"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "query",
+        "list_tables"
+      ]
+    },
+    "markitdown": {
+      "command": "python",
+      "args": [
+        "c:\\Documents\\AI\\mcp仓库\\agents\\markitdown-mcp\\markitdown_server.py"
+      ],
+      "cwd": "c:\\Documents\\AI\\mcp仓库\\agents\\markitdown-mcp",
+      "env": {
+        "MARKITDOWN_OUTPUT_DIR": "./converted",
+        "MARKITDOWN_PRESERVE_IMAGES": "true",
+        "MARKITDOWN_MAX_FILE_SIZE": "100MB"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "convert_document",
+        "extract_text"
+      ]
+    },
+    "playwright": {
+      "command": "python",
+      "args": [
+        "c:\\Documents\\AI\\mcp仓库\\agents\\playwright-mcp\\playwright_server.py"
+      ],
+      "cwd": "c:\\Documents\\AI\\mcp仓库\\agents\\playwright-mcp",
+      "env": {
+        "PLAYWRIGHT_BROWSER": "chromium",
+        "PLAYWRIGHT_HEADLESS": "false",
+        "PLAYWRIGHT_TIMEOUT": "30000",
+        "PLAYWRIGHT_VIEWPORT_WIDTH": "1280",
+        "PLAYWRIGHT_VIEWPORT_HEIGHT": "720"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "navigate",
+        "screenshot",
+        "get_text"
+      ]
+    },
+    "query-processor": {
+      "command": "python3",
+      "args": [
+        "agents/query-processor/query_processor.py"
+      ],
+      "cwd": "agents/query-processor",
+      "env": {
+        "QUERY_LANGUAGE": "auto",
+        "ENABLE_EXPANSION": "true",
+        "MAX_QUERY_LENGTH": "500"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "process_query",
+        "analyze_intent"
+      ]
+    },
+    "strategic-search-planner": {
+      "command": "python3",
+      "args": [
+        "agents/strategic-search-planner/search_planner.py"
+      ],
+      "cwd": "agents/strategic-search-planner",
+      "env": {
+        "MAX_SEARCH_SOURCES": "10",
+        "PLANNING_TIMEOUT": "30",
+        "ENABLE_OPTIMIZATION": "true"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "create_search_plan",
+        "optimize_strategy"
+      ]
+    },
+    "targeted-search-executor": {
+      "command": "python3",
+      "args": [
+        "agents/targeted-search-executor/search_executor.py"
+      ],
+      "cwd": "agents/targeted-search-executor",
+      "env": {
+        "MAX_CONCURRENT_SEARCHES": "5",
+        "DEFAULT_TIMEOUT": "30",
+        "ENABLE_CACHING": "true"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "execute_search_task"
+      ]
+    },
+    "web-scraper-link-extractor": {
+      "command": "python3",
+      "args": [
+        "agents/web-scraper-link-extractor/scraper.py"
+      ],
+      "cwd": "agents/web-scraper-link-extractor",
+      "env": {
+        "MAX_PAGES_PER_BATCH": "50",
+        "REQUEST_DELAY": "1",
+        "ENABLE_JS_RENDERING": "false"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "scrape_page",
+        "extract_links"
+      ]
+    },
+    "secure-file-downloader": {
+      "command": "python3",
+      "args": [
+        "agents/secure-file-downloader/downloader.py"
+      ],
+      "cwd": "agents/secure-file-downloader",
+      "env": {
+        "MAX_FILE_SIZE": "100MB",
+        "DOWNLOAD_TIMEOUT": "300",
+        "ENABLE_VIRUS_SCAN": "true"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "download_file"
+      ]
+    },
+    "result-aggregator-validator": {
+      "command": "python3",
+      "args": [
+        "agents/result-aggregator-validator/aggregator.py"
+      ],
+      "cwd": "agents/result-aggregator-validator",
+      "env": {
+        "MIN_CONFIDENCE_SCORE": "0.7",
+        "ENABLE_DEDUPLICATION": "true",
+        "MAX_RESULTS_PER_SOURCE": "100"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "aggregate_results",
+        "validate_quality"
+      ]
+    },
+    "context7-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "ctx7sk-ab292c6c-24be-4bf5-b77e-8bf77d924ed6"
+      ],
+      "cwd": "c:\\Documents\\AI\\mcp仓库\\agents\\context7-mcp",
+      "env": {
+        "CONTEXT7_API_KEY": "ctx7sk-ab292c6c-24be-4bf5-b77e-8bf77d924ed6",
+        "NODE_ENV": "production",
+        "TIMEOUT": "30000"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_documentation",
+        "get_code_examples",
+        "search_api"
+      ]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ],
+      "cwd": "c:\\Documents\\AI\\mcp仓库\\agents\\chrome-devtools-mcp",
+      "env": {
+        "SystemRoot": "C:\\Windows",
+        "PROGRAMFILES": "C:\\Program Files"
+      },
+      "startup_timeout_ms": 20000,
+      "disabled": false,
+      "autoApprove": [
+        "click",
+        "drag",
+        "fill",
+        "fill_form",
+        "handle_dialog",
+        "hover",
+        "upload_file",
+        "close_page",
+        "list_pages",
+        "navigate_page",
+        "navigate_page_history",
+        "new_page",
+        "select_page",
+        "wait_for",
+        "emulate_cpu",
+        "emulate_network",
+        "resize_page",
+        "performance_analyze_insight",
+        "performance_start_trace",
+        "performance_stop_trace",
+        "get_network_request",
+        "list_network_requests",
+        "evaluate_script",
+        "list_console_messages",
+        "take_screenshot",
+        "take_snapshot"
+      ]
+    }
+  },
+  "globalSettings": {
+    "logLevel": "INFO",
+    "timeout": 30000,
+    "maxConcurrentRequests": 10
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "description": "MCP代理仓库配置文件",
+    "created": "2024-01-15",
+    "repository": "https://github.com/your-username/mcp-repository"
+  }
+}

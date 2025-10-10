@@ -1,0 +1,73 @@
+# Docker Compose 生产环境配置
+version: '3.8'
+
+services:
+  # PostgREST API 服务
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: guessing-pen-postgrest
+    ports:
+      - "3001:3000"
+    environment:
+      # 注意：密码中的特殊字符需要 URL 编码
+      # @ 编码为 %40
+      PGRST_DB_URI: postgres://aki:20138990398QGL%40gmailcom@pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com:5432/aki
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: ${DB_USER}
+      PGRST_DB_POOL: 10
+      PGRST_DB_POOL_TIMEOUT: 10
+      PGRST_SERVER_HOST: 0.0.0.0
+      PGRST_SERVER_PORT: 3000
+      PGRST_LOG_LEVEL: info
+      PGRST_OPENAPI_MODE: follow-privileges
+    restart: unless-stopped
+    networks:
+      - guessing-pen-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.guessing-pen.service=postgrest"
+      - "com.guessing-pen.description=PostgREST API服务"
+
+  # 前端应用
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: guessing-pen-frontend
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./logs/nginx:/var/log/nginx
+      - nginx_cache:/var/cache/nginx
+    restart: unless-stopped
+    depends_on:
+      postgrest:
+        condition: service_healthy
+    networks:
+      - guessing-pen-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.guessing-pen.service=frontend"
+      - "com.guessing-pen.description=前端应用"
+
+networks:
+  guessing-pen-network:
+    driver: bridge
+    name: guessing-pen-network
+
+volumes:
+  nginx_cache:
+    name: guessing-pen-nginx-cache

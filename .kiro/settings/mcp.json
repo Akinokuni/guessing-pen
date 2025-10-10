@@ -1,0 +1,144 @@
+{
+    "mcpServers": {
+        "supabase": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@supabase/mcp-server-supabase",
+                "--read-only",
+                "--project-ref=dcfoohekabvbxupdagwb"
+            ],
+            "env": {
+                "SUPABASE_ACCESS_TOKEN": "sbp_ae70350e38eef5d748546b72202ed0f305e2b84f"
+            },
+            "disabled": false,
+            "autoApprove": [
+                "list_projects",
+                "get_project_config",
+                "list_tables",
+                "describe_table",
+                "run_sql"
+            ]
+        },
+        "ssh-mcp": {
+            "command": "python",
+            "args": [
+                "c:\\Documents\\AI\\mcp仓库\\agents\\mcp-ssh\\bridging_ssh_mcp.py"
+            ],
+            "cwd": "c:\\Documents\\AI\\mcp仓库\\agents\\mcp-ssh",
+            "env": {
+                "SSH_TIMEOUT": "30",
+                "SSH_CONFIG_PATH": "~/.ssh/config",
+                "SSH_KEY_PATH": "~/.ssh/id_rsa",
+                "DEBUG_MODE": "false",
+                "LOG_LEVEL": "INFO",
+                "MAX_CONNECTIONS": "10",
+                "KEEPALIVE_INTERVAL": "60",
+                "NODE_PATH": "agents/mcp-ssh/node_modules"
+            },
+            "disabled": false,
+            "autoApprove": [
+                "ssh_list_connections",
+                "ssh_get_connection",
+                "ssh_execute_command"
+            ]
+        },
+        "context7-mcp": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@upstash/context7-mcp",
+                "--api-key",
+                "ctx7sk-ab292c6c-24be-4bf5-b77e-8bf77d924ed6"
+            ],
+            "cwd": "c:\\Documents\\AI\\mcp仓库\\agents\\context7-mcp",
+            "env": {
+                "CONTEXT7_API_KEY": "ctx7sk-ab292c6c-24be-4bf5-b77e-8bf77d924ed6",
+                "NODE_ENV": "production",
+                "TIMEOUT": "30000"
+            },
+            "disabled": false,
+            "autoApprove": [
+                "get_documentation",
+                "get_code_examples",
+                "search_api"
+            ]
+        },
+        "chrome-devtools": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "chrome-devtools-mcp@latest"
+            ],
+            "cwd": "c:\\Documents\\AI\\mcp仓库\\agents\\chrome-devtools-mcp",
+            "env": {
+                "SystemRoot": "C:\\Windows",
+                "PROGRAMFILES": "C:\\Program Files"
+            },
+            "startup_timeout_ms": 20000,
+            "disabled": false,
+            "autoApprove": [
+                "click",
+                "drag",
+                "fill",
+                "fill_form",
+                "handle_dialog",
+                "hover",
+                "upload_file",
+                "close_page",
+                "list_pages",
+                "navigate_page",
+                "navigate_page_history",
+                "new_page",
+                "select_page",
+                "wait_for",
+                "emulate_cpu",
+                "emulate_network",
+                "resize_page",
+                "performance_analyze_insight",
+                "performance_start_trace",
+                "performance_stop_trace",
+                "get_network_request",
+                "list_network_requests",
+                "evaluate_script",
+                "list_console_messages",
+                "take_screenshot",
+                "take_snapshot"
+            ]
+        },
+        "filesystem": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "C:\\Documents\\Galgame群活动\\旮旯画师之猜猜笔\\web"
+            ],
+            "disabled": false,
+            "autoApprove": [
+                "read_file",
+                "write_file",
+                "create_directory",
+                "list_directory",
+                "search_files"
+            ]
+        },
+        "git": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-git",
+                "--repository",
+                "C:\\Documents\\Galgame群活动\\旮旯画师之猜猜笔\\web"
+            ],
+            "disabled": false,
+            "autoApprove": [
+                "git_status",
+                "git_log",
+                "git_diff",
+                "git_show",
+                "git_branch",
+                "git_commit"
+            ]
+        }
+    }
+}

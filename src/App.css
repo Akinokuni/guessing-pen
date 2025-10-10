@@ -1,0 +1,37 @@
+/* 应用程序特定样式 */
+.app-container {
+  @apply min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .app-container {
+    @apply px-2 py-1;
+  }
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* 触摸优化 */
+.touch-optimized {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* 移动端卡片间距优化 */
+@media (max-width: 640px) {
+  .card-gallery {
+    @apply gap-2;
+  }
+  
+  .staging-area {
+    @apply gap-2;
+  }
+}

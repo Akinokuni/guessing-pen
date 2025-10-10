@@ -1,0 +1,42 @@
+/* 和风数字卡片集 - 字体定义（使用系统字体） */
+
+/* 字体回退策略 - 使用系统字体避免加载问题 */
+.font-title {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+}
+
+.font-card-id {
+  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-weight: 500;
+}
+
+.font-body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Source Han Serif CN', 'Noto Serif CJK SC', serif;
+  font-weight: 400;
+}
+
+/* 备用字体定义（如果字体文件可用） */
+@font-face {
+  font-family: 'SmileySans';
+  src: url('/fonts/SmileySans-Oblique.ttf') format('truetype');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'AlibabaSans';
+  src: url('/fonts/AlibabaSans-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SourceHanSerif';
+  src: url('/fonts/SourceHanSerifCN-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

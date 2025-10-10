@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # PostgREST API 服务
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: guessing-pen-postgrest
+    ports:
+      - "3001:3001"
+    environment:
+      PGRST_DB_URI: postgres://aki:20138990398QGL@gmailcom@pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: web_anon
+      PGRST_DB_POOL: 10
+      PGRST_DB_POOL_TIMEOUT: 10
+      PGRST_SERVER_HOST: 0.0.0.0
+      PGRST_SERVER_PORT: 3001
+      PGRST_LOG_LEVEL: info
+      PGRST_OPENAPI_MODE: follow-privileges
+    restart: unless-stopped
+    networks:
+      - guessing-pen-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.guessing-pen.description=PostgREST API服务"
+      - "com.guessing-pen.version=${VERSION:-latest}"
+
+  # 前端应用
+  guessing-pen-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - BUILD_DATE=${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        - VERSION=${VERSION:-latest}
+    container_name: guessing-pen-challenge
+    ports:
+      - "80:80"
+      - "443:443"  # 为HTTPS预留
+    environment:
+      - VITE_POSTGREST_URL=http://postgrest:3001
+      - VITE_USE_POSTGREST=true
+      - NODE_ENV=production
+    volumes:
+      # 持久化日志
+      - ./logs:/var/log/nginx
+      # 持久化nginx缓存
+      - nginx_cache:/var/cache/nginx
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - guessing-pen-network
+    labels:
+      - "com.guessing-pen.description=猜猜笔挑战前端应用"
+      - "com.guessing-pen.version=${VERSION:-latest}"
+      - "traefik.enable=true"
+      - "traefik.http.routers.guessing-pen.rule=Host(`localhost`)"
+      - "traefik.http.routers.guessing-pen.entrypoints=web"
+
+  # 开发环境的 Supabase（可选）
+  supabase-db:
+    image: supabase/postgres:15.1.0.117
+    container_name: guessing-pen-db
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+    volumes:
+      - supabase_db_data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "54322:5432"
+    restart: unless-stopped
+    networks:
+      - guessing-pen-network
+    profiles:
+      - dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  guessing-pen-network:
+    driver: bridge
+    name: guessing-pen-network
+
+volumes:
+  supabase_db_data:
+    name: guessing-pen-db-data
+  nginx_cache:
+    name: guessing-pen-nginx-cache

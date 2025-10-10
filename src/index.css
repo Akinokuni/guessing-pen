@@ -1,0 +1,89 @@
+@import './assets/fonts.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 和风数字卡片集 - 全局样式 - 严格按照美学设计方案和无障碍设计原则 */
+:root {
+  /* 使用正文字体作为默认字体 */
+  font-family: 'SourceHanSerif', 'Source Han Serif CN', 'Noto Serif CJK SC', serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* 和风主题核心色彩变量 - 严格按照美学设计方案 */
+  --wafuu-deep-blue: #002B6D;      /* 静谧深蓝 - 主背景色 */
+  --wafuu-pure-white: #FFFFFF;     /* 纯白 - 主功能区背景 */
+  --wafuu-light-gray: #EFEFEF;     /* 浅灰 - 辅助色/纹样色 */
+  --wafuu-ink-black: #333333;      /* 墨黑 - 主文本色 */
+
+  /* 无障碍设计扩展色彩变量 */
+  --accessible-text-on-dark: #FFFFFF;   /* 深蓝背景上的文本 */
+  --accessible-text-on-light: #1A1A1A;  /* 白色背景上的文本（确保4.5:1对比度） */
+  --accessible-text-secondary: #4A4A4A; /* 次要文本色 */
+  --accessible-hover: #F5F5F5;          /* 悬停状态 */
+  --accessible-active: #E8E8E8;         /* 激活状态 */
+  --accessible-disabled: #CCCCCC;       /* 禁用状态 */
+  --accessible-border: #D0D0D0;         /* 主要边框 */
+  --accessible-border-light: #E8E8E8;   /* 浅色边框 */
+  --accessible-divider: #F0F0F0;        /* 分割线 */
+
+  color-scheme: light;
+  color: var(--accessible-text-on-light);
+  background-color: var(--wafuu-deep-blue);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #002b6d;
+  background-image: url("https://transparenttextures.com/patterns/crissxcross.png");
+  color: var(--accessible-text-on-dark);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+
+/* 青海波纹样 */
+.seigaiha-pattern {
+  background-image: 
+    radial-gradient(circle at 25% 25%, transparent 20%, var(--wafuu-light-gray) 21%, var(--wafuu-light-gray) 25%, transparent 26%),
+    radial-gradient(circle at 75% 25%, transparent 20%, var(--wafuu-light-gray) 21%, var(--wafuu-light-gray) 25%, transparent 26%),
+    radial-gradient(circle at 25% 75%, transparent 20%, var(--wafuu-light-gray) 21%, var(--wafuu-light-gray) 25%, transparent 26%),
+    radial-gradient(circle at 75% 75%, transparent 20%, var(--wafuu-light-gray) 21%, var(--wafuu-light-gray) 25%, transparent 26%);
+  background-size: 40px 40px;
+  background-position: 0 0, 20px 0, 0 20px, 20px 20px;
+  opacity: 0.1;
+}
+
+/* 卡片悬停效果 */
+.card-hover-glow {
+  transition: all 0.2s ease-in-out;
+}
+
+.card-hover-glow:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+/* AI标记艺术字效果 */
+.ai-marker-artistic {
+  font-family: 'SmileySans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 800;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 统一的页面背景样式 */
+.page-background {
+  background-color: #002b6d;
+  background-image: url("https://transparenttextures.com/patterns/crissxcross.png");
+}

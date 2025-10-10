@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据库API测试</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-section h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 1.3em;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            border-left-color: #4caf50;
+            background: #f1f8f4;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #fef1f0;
+            color: #d32f2f;
+        }
+        .loading {
+            color: #999;
+            font-style: italic;
+        }
+        input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-right: 10px;
+            width: 200px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 数据库API连接测试</h1>
+        
+        <div class="test-section">
+            <h2>📊 获取游戏统计</h2>
+            <button onclick="testGetStats()">测试获取统计</button>
+            <div id="stats-result" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🏆 获取排行榜</h2>
+            <button onclick="testGetLeaderboard()">测试获取排行榜</button>
+            <div id="leaderboard-result" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>👤 创建玩家</h2>
+            <input type="text" id="nickname" placeholder="输入昵称" value="测试玩家">
+            <button onclick="testCreatePlayer()">创建玩家</button>
+            <div id="player-result" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎮 完整流程测试</h2>
+            <button onclick="testFullFlow()">测试完整游戏流程</button>
+            <div id="flow-result" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/db';
+
+        function showResult(elementId, content, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'result ' + (isError ? 'error' : 'success');
+            element.textContent = typeof content === 'object' 
+                ? JSON.stringify(content, null, 2) 
+                : content;
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'result loading';
+            element.textContent = '加载中...';
+        }
+
+        async function testGetStats() {
+            showLoading('stats-result');
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const data = await response.json();
+                showResult('stats-result', data);
+            } catch (error) {
+                showResult('stats-result', `错误: ${error.message}`, true);
+            }
+        }
+
+        async function testGetLeaderboard() {
+            showLoading('leaderboard-result');
+            try {
+                const response = await fetch(`${API_BASE}/leaderboard?limit=5`);
+                const data = await response.json();
+                showResult('leaderboard-result', data);
+            } catch (error) {
+                showResult('leaderboard-result', `错误: ${error.message}`, true);
+            }
+        }
+
+        async function testCreatePlayer() {
+            const nickname = document.getElementById('nickname').value;
+            if (!nickname) {
+                showResult('player-result', '请输入昵称', true);
+                return;
+            }
+
+            showLoading('player-result');
+            try {
+                const response = await fetch(`${API_BASE}/players`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname })
+                });
+                const data = await response.json();
+                showResult('player-result', data);
+            } catch (error) {
+                showResult('player-result', `错误: ${error.message}`, true);
+            }
+        }
+
+        async function testFullFlow() {
+            showLoading('flow-result');
+            const log = [];
+            
+            try {
+                // 1. 创建玩家
+                log.push('1️⃣ 创建玩家...');
+                const playerRes = await fetch(`${API_BASE}/players`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname: '完整测试玩家' })
+                });
+                const player = await playerRes.json();
+                log.push(`✅ 玩家创建成功: ID=${player.id}, 昵称=${player.nickname}`);
+
+                // 2. 创建游戏会话
+                log.push('\n2️⃣ 创建游戏会话...');
+                const sessionRes = await fetch(`${API_BASE}/sessions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ player_id: player.id })
+                });
+                const session = await sessionRes.json();
+                log.push(`✅ 会话创建成功: ID=${session.id}`);
+
+                // 3. 添加答案
+                log.push('\n3️⃣ 添加答案组合...');
+                const answersRes = await fetch(`${API_BASE}/answers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        answers: [{
+                            session_id: session.id,
+                            card_ids: ['662', '676', '687'],
+                            ai_marked_card_id: '687',
+                            is_grouping_correct: true,
+                            is_ai_detection_correct: true,
+                            score: 10
+                        }]
+                    })
+                });
+                await answersRes.json();
+                log.push('✅ 答案添加成功');
+
+                // 4. 更新会话
+                log.push('\n4️⃣ 更新游戏会话...');
+                const updateRes = await fetch(`${API_BASE}/sessions/${session.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        total_score: 25,
+                        combinations_count: 1,
+                        completed_at: new Date().toISOString()
+                    })
+                });
+                await updateRes.json();
+                log.push('✅ 会话更新成功');
+
+                // 5. 查询排行榜
+                log.push('\n5️⃣ 查询排行榜...');
+                const leaderboardRes = await fetch(`${API_BASE}/leaderboard?limit=3`);
+                const leaderboard = await leaderboardRes.json();
+                log.push(`✅ 排行榜查询成功，共 ${leaderboard.total} 条记录`);
+
+                log.push('\n🎉 完整流程测试成功！');
+                showResult('flow-result', log.join('\n'));
+            } catch (error) {
+                log.push(`\n❌ 测试失败: ${error.message}`);
+                showResult('flow-result', log.join('\n'), true);
+            }
+        }
+
+        // 页面加载时自动测试统计
+        window.onload = () => {
+            testGetStats();
+        };
+    </script>
+</body>
+</html>
