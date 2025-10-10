@@ -1,0 +1,10 @@
+api/
+database/
+docs/
+scripts/
+supabase/
+*.md
+*.sql
+*.sh
+*.bat
+*.conf

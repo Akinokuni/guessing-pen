@@ -1,11 +1,7 @@
 import { SubmissionPayload, ApiResponse, Card } from '../types'
 import { PostgRESTService } from './postgrestService'
 
-// API 基础配置
-const API_BASE_URL = '/api'
-
-// 强制使用 PostgREST
-const usePostgREST = true
+// API 服务实现
 
 // API 服务类
 export class ApiService {

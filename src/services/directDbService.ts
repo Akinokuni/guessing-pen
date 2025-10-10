@@ -1,14 +1,5 @@
 import { SubmissionPayload, ApiResponse, Card } from '../types'
-
-// 游戏配置 - 正确答案
-const GAME_CONFIG = {
-  correctGroups: [
-    ['662', '676', '687'], ['663', '677', '685'], ['664', '678', '683'],
-    ['665', '679', '681'], ['666', '671', '688'], ['667', '672', '686'],
-    ['668', '673', '684'], ['669', '674', '682'], ['670', '675', '680']
-  ],
-  aiCards: ['687', '685', '683', '681', '688', '686', '684', '682', '680']
-}
+import { GAME_CONFIG } from '../config/game-config'
 
 // 直接数据库服务类（通过API端点）
 export class DirectDbService {
@@ -56,7 +47,7 @@ export class DirectDbService {
         
         // 验证分组是否正确
         const isGroupingCorrect = GAME_CONFIG.correctGroups.some(group => 
-          group.every(id => cardIds.includes(id)) && cardIds.every(id => group.includes(id))
+          group.every((id: string) => cardIds.includes(id)) && cardIds.every((id: string) => group.includes(id))
         )
         
         if (isGroupingCorrect) {
@@ -86,7 +77,7 @@ export class DirectDbService {
         if (combination.aiMarkedCardId) {
           const markedCardId = combination.aiMarkedCardId
           
-          if (GAME_CONFIG.aiCards.includes(markedCardId)) {
+          if ((GAME_CONFIG.aiCards as readonly string[]).includes(markedCardId)) {
             hits++
           } else {
             falsePositives++
@@ -103,7 +94,7 @@ export class DirectDbService {
         if (combination.aiMarkedCardId) {
           const markedCardId = combination.aiMarkedCardId
           const cardIds = combination.cards.map(card => card.id)
-          const aiCardsInGroup = cardIds.filter(id => GAME_CONFIG.aiCards.includes(id))
+          const aiCardsInGroup = cardIds.filter((id: string) => (GAME_CONFIG.aiCards as readonly string[]).includes(id))
           
           result.isAiDetectionCorrect = aiCardsInGroup.length === 1 && 
             markedCardId === aiCardsInGroup[0]

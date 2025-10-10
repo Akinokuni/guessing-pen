@@ -37,7 +37,5 @@ export default defineConfig({
     'process.env.NODE_ENV': '"production"',
     'global': 'globalThis'
   },
-  optimizeDeps: {
-    include: ['react', 'react-dom']
-  }
+
 })

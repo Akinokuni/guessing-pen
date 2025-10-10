@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "node scripts/server-dev.js",
+    "dev:api": "node scripts/development/server-dev.js",
     "build": "tsc --noEmit && vite build",
     "build:skip-check": "vite build",
     "build:docker": "vite build --mode production",
@@ -18,7 +18,7 @@
     "docker:ps": "docker-compose -f docker-compose.prod.yml ps",
     "docker:restart": "docker-compose -f docker-compose.prod.yml restart",
     "docker:clean": "docker system prune -f && docker image prune -f",
-    "docker:deploy": "bash scripts/docker-deploy.sh",
+    "docker:deploy": "bash scripts/deployment/docker-deploy.sh",
     "deploy": "vercel --prod",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",

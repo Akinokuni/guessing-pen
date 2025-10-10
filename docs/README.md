@@ -1,187 +1,118 @@
-# 📚 项目文档索引
+# 项目文档目录
 
-欢迎查阅旮旯画师之猜猜笔项目文档！
+本目录包含项目的所有文档，按功能和阶段分类组织。
 
-## 🚀 快速开始
-
-新手？从这里开始：
-
-1. **[主README](../README.md)** - 项目概览和快速开始
-2. **[数据库快速启动](./database/QUICK_START_DB.md)** - 5分钟配置数据库
-3. **[项目结构说明](./PROJECT_STRUCTURE.md)** - 了解项目组织
-
-## 📖 文档分类
-
-### 数据库文档 🗄️
-
-| 文档 | 说明 | 适用场景 |
-|------|------|----------|
-| [快速启动指南](./database/QUICK_START_DB.md) | 最简单的开始方式 | ⭐ 推荐新手 |
-| [应用就绪文档](./database/APPLICATION_CONNECTION_READY.md) | 完整配置和部署指南 | 详细参考 |
-| [数据库总览](./database/README_DATABASE.md) | 数据库测试完成报告 | 了解现状 |
-| [初始化成功报告](./database/DATABASE_INIT_SUCCESS.md) | 初始化详细信息 | 验证初始化 |
-| [连接测试报告](./database/DATABASE_CONNECTION_TEST_REPORT.md) | 测试结果和故障排查 | 解决问题 |
-| [权限问题说明](./database/ALIYUN_RDS_PERMISSION_ISSUE.md) | 阿里云RDS权限问题 | 遇到权限错误 |
-| [手动设置文档](./database/MANUAL_DATABASE_SETUP.md) | 手动设置步骤 | 自定义配置 |
-
-**数据库脚本位置**: `../database/`
-
-### 部署文档 🚀
-
-| 文档 | 说明 | 适用场景 |
-|------|------|----------|
-| [部署指南](./deployment/DEPLOYMENT.md) | Vercel部署步骤 | ⭐ 部署到生产 |
-| [部署就绪文档](./deployment/DEPLOYMENT_READY.md) | 部署前准备 | 部署检查 |
-| [部署检查清单](./deployment/DEPLOYMENT_CHECKLIST.md) | 部署步骤清单 | 逐步部署 |
-| [PostgREST部署](./deployment/POSTGREST_DEPLOYMENT.md) | PostgREST配置 | 使用PostgREST |
-| [Supabase设置](./deployment/SUPABASE_SETUP.md) | Supabase配置 | 使用Supabase |
-
-### 迁移文档 🔄
-
-| 文档 | 说明 | 适用场景 |
-|------|------|----------|
-| [迁移检查报告](./migration/MIGRATION_CHECK_REPORT.md) | 迁移状态检查 | 了解迁移状态 |
-| [迁移总结](./migration/MIGRATION_SUMMARY.md) | 迁移详细信息 | 迁移参考 |
-
-### 其他文档 📝
-
-| 文档 | 说明 |
-|------|------|
-| [项目结构说明](./PROJECT_STRUCTURE.md) | 完整的项目结构文档 |
-| [更新日志](../CHANGELOG.md) | 版本更新历史 |
-| [许可证](../LICENSE) | MIT许可证 |
-
-## 🎯 按场景查找
-
-### 我想开始开发
-1. 阅读 [主README](../README.md)
-2. 配置数据库：[快速启动指南](./database/QUICK_START_DB.md)
-3. 运行 `npm install && npm run dev`
-
-### 我遇到数据库问题
-1. 运行 `npm run db:check` 检查状态
-2. 查看 [连接测试报告](./database/DATABASE_CONNECTION_TEST_REPORT.md)
-3. 参考 [权限问题说明](./database/ALIYUN_RDS_PERMISSION_ISSUE.md)
-
-### 我想部署到生产环境
-1. 查看 [部署检查清单](./deployment/DEPLOYMENT_CHECKLIST.md)
-2. 阅读 [部署指南](./deployment/DEPLOYMENT.md)
-3. 配置环境变量
-4. 运行 `npm run deploy`
-
-### 我想了解项目结构
-1. 阅读 [项目结构说明](./PROJECT_STRUCTURE.md)
-2. 查看 `../src/` 目录
-3. 参考代码注释
-
-### 我想贡献代码
-1. Fork项目
-2. 阅读 [项目结构说明](./PROJECT_STRUCTURE.md)
-3. 创建功能分支
-4. 提交Pull Request
-
-## 🔍 快速参考
-
-### 常用命令
-
-```bash
-# 开发
-npm run dev              # 启动前端
-npm run dev:api          # 启动API服务器
-
-# 数据库
-npm run db:init          # 初始化数据库
-npm run db:verify        # 验证数据
-npm run db:check         # 检查状态
-npm run db:test          # 测试连接
-
-# 构建部署
-npm run build            # 构建生产版本
-npm run deploy           # 部署到Vercel
-```
-
-### 重要配置文件
+## 📁 目录结构
 
 ```
-.env                     # 环境变量
-package.json             # NPM配置
-vite.config.ts           # Vite配置
-vercel.json              # Vercel配置
-tailwind.config.js       # Tailwind配置
+docs/
+├── database/           # 数据库相关文档
+├── deployment/         # 部署相关文档
+├── migration/          # 迁移相关文档
+├── project-status/     # 项目状态文档
+├── PROJECT_CLEANUP_SUMMARY.md
+├── PROJECT_STRUCTURE.md
+└── README.md          # 本说明文件
 ```
 
-### 数据库信息
+## 🗄️ 数据库文档 (database/)
 
-```
-主机: pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com
-端口: 5432
-数据库: aki
-Schema: public
-```
+### 快速开始
+- `QUICK_START_DB.md` - 数据库快速启动指南 ⭐
+- `APPLICATION_CONNECTION_READY.md` - 应用连接就绪文档
 
-### API端点
+### 设置和配置
+- `MANUAL_DATABASE_SETUP.md` - 手动数据库设置
+- `DATABASE_INIT_SUCCESS.md` - 数据库初始化成功报告
 
-```
-开发环境: http://localhost:3001/api/db
-生产环境: https://your-app.vercel.app/api/db
-```
+### 测试和验证
+- `DATABASE_CONNECTION_TEST_REPORT.md` - 连接测试报告
 
-## 📊 文档状态
+### 问题解决
+- `ALIYUN_RDS_PERMISSION_ISSUE.md` - 阿里云RDS权限问题
+- `README_DATABASE.md` - 数据库说明文档
 
-| 类别 | 文档数 | 状态 |
-|------|--------|------|
-| 数据库 | 7 | ✅ 完整 |
-| 部署 | 5 | ✅ 完整 |
-| 迁移 | 2 | ✅ 完整 |
-| 其他 | 3 | ✅ 完整 |
-| **总计** | **17** | **✅ 完整** |
+## 🚀 部署文档 (deployment/)
 
-## 🆘 获取帮助
+### 部署指南
+- `DEPLOYMENT.md` - 主要部署文档 ⭐
+- `DEPLOYMENT_READY.md` - 部署就绪文档
+- `DEPLOYMENT_CHECKLIST.md` - 部署检查清单
+- `DEPLOYMENT_CHECKLIST_FINAL.md` - 最终部署检查清单
 
-### 遇到问题？
+### Docker部署
+- `DOCKER_DEPLOYMENT.md` - Docker部署文档
+- `DOCKER_DEPLOYMENT_SUMMARY.md` - Docker部署总结
+- `DOCKER_QUICK_START.md` - Docker快速开始
 
-1. **查看文档** - 先查找相关文档
-2. **运行诊断** - 使用 `npm run db:check`
-3. **查看日志** - 检查控制台输出
-4. **搜索问题** - 在文档中搜索关键词
+### PostgREST部署
+- `POSTGREST_DEPLOYMENT.md` - PostgREST部署文档
+- `DEPLOY_WITH_POSTGREST.md` - 使用PostgREST部署
 
-### 常见问题
+### 问题解决
+- `ERROR_REPORT_502.md` - 502错误报告
+- `TROUBLESHOOTING_502.md` - 502错误故障排查
+- `FIX_502_SUMMARY.md` - 502错误修复总结
 
-**Q: 数据库连接超时？**  
-A: 查看 [连接测试报告](./database/DATABASE_CONNECTION_TEST_REPORT.md) 的故障排查部分
+### 测试和验证
+- `TEST_AND_DEPLOY.md` - 测试和部署文档
 
-**Q: 权限错误？**  
-A: 查看 [权限问题说明](./database/ALIYUN_RDS_PERMISSION_ISSUE.md)
+### 历史文档
+- `SUPABASE_SETUP.md` - Supabase设置 (已废弃)
 
-**Q: 如何部署？**  
-A: 查看 [部署指南](./deployment/DEPLOYMENT.md)
+## 🔄 迁移文档 (migration/)
 
-**Q: 项目结构？**  
-A: 查看 [项目结构说明](./PROJECT_STRUCTURE.md)
+- `MIGRATION_SUMMARY.md` - 迁移总结
+- `MIGRATION_CHECK_REPORT.md` - 迁移检查报告
 
-## 📝 文档贡献
+## 📊 项目状态文档 (project-status/)
 
-发现文档问题或想要改进？
+- `PROJECT_CLEANUP_COMPLETE.md` - 项目清理完成报告
+- `PROJECT_STATUS.md` - 项目状态文档
+- `REMOVE_SUPABASE_SUMMARY.md` - 移除Supabase总结
 
-1. 在相应的Markdown文件中编辑
-2. 确保格式正确
-3. 提交Pull Request
+## 📋 项目概览文档
 
-## 🔗 外部资源
+- `PROJECT_CLEANUP_SUMMARY.md` - 项目清理总结
+- `PROJECT_STRUCTURE.md` - 项目结构文档
 
-- [React文档](https://react.dev/)
-- [Vite文档](https://vitejs.dev/)
-- [Tailwind CSS文档](https://tailwindcss.com/)
-- [PostgreSQL文档](https://www.postgresql.org/docs/)
-- [Vercel文档](https://vercel.com/docs)
-- [阿里云RDS文档](https://help.aliyun.com/product/26090.html)
+## 🎯 推荐阅读顺序
 
-## 📅 文档更新
+### 新开发者入门
+1. `../README.md` - 项目主要说明
+2. `database/QUICK_START_DB.md` - 数据库快速开始
+3. `deployment/DEPLOYMENT.md` - 部署指南
+4. `PROJECT_STRUCTURE.md` - 项目结构
 
-- **最后更新**: 2025-10-10
-- **版本**: 1.0.0
-- **维护者**: 项目团队
+### 部署人员
+1. `deployment/DEPLOYMENT_CHECKLIST.md` - 部署检查清单
+2. `deployment/DEPLOYMENT_READY.md` - 部署就绪文档
+3. `deployment/DOCKER_DEPLOYMENT.md` - Docker部署 (如需要)
+
+### 问题排查
+1. `database/ALIYUN_RDS_PERMISSION_ISSUE.md` - 数据库权限问题
+2. `deployment/TROUBLESHOOTING_502.md` - 502错误排查
+3. `deployment/ERROR_REPORT_502.md` - 错误报告
+
+## 🔧 文档维护
+
+### 更新原则
+- 重要变更及时更新相关文档
+- 保持文档与代码同步
+- 废弃的文档标记为 `(已废弃)`
+
+### 文档规范
+- 使用Markdown格式
+- 包含清晰的标题和目录
+- 提供具体的操作步骤
+- 包含必要的代码示例
+
+### 贡献指南
+- 新增文档请放入对应分类目录
+- 更新文档后请同步更新本索引
+- 重要文档请在相应位置标记 ⭐
 
 ---
 
-**提示**: 使用 Ctrl+F (Windows) 或 Cmd+F (Mac) 在页面中搜索关键词
+**最后更新**: 2025年10月11日  
+**维护者**: 项目团队

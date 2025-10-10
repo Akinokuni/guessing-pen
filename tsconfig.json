@@ -28,7 +28,10 @@
       "@/design-system/*": ["src/design-system/*"],
       "@/store/*": ["src/store/*"],
       "@/types/*": ["src/types/*"],
-      "@/utils/*": ["src/utils/*"]
+      "@/utils/*": ["src/utils/*"],
+      "@/services/*": ["src/services/*"],
+      "@/config/*": ["src/config/*"],
+      "@/views/*": ["src/views/*"]
     }
   },
   "include": ["src"],
