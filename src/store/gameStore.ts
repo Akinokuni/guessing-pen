@@ -41,7 +41,7 @@ interface GameStore {
 }
 
 // 从 localStorage 恢复状态
-const getInitialState = (): Partial<GameStore> => {
+const getInitialState = () => {
   const savedUserInfo = gameStorage.getUserInfo()
   const savedGameState = gameStorage.getGameState()
   const savedProgress = gameStorage.getGameProgress()
@@ -49,9 +49,9 @@ const getInitialState = (): Partial<GameStore> => {
   return {
     userInfo: savedUserInfo,
     gameState: savedGameState as GameState,
-    availableCards: [],
-    selectedCards: [],
-    aiMarkedCardId: null,
+    availableCards: [] as Card[],
+    selectedCards: [] as Card[],
+    aiMarkedCardId: null as string | null,
     submittedCombinations: (savedProgress.submittedCombinations as Combination[]) || [],
     finalScore: savedProgress.finalScore,
   }
@@ -59,8 +59,18 @@ const getInitialState = (): Partial<GameStore> => {
 
 // 创建 Zustand store
 export const useGameStore = create<GameStore>()(
-  subscribeWithSelector((set, get) => ({
-    ...getInitialState(),
+  subscribeWithSelector((set, get) => {
+    const initialState = getInitialState()
+    
+    return {
+      // 明确设置所有必需的属性
+      userInfo: initialState.userInfo,
+      gameState: initialState.gameState,
+      availableCards: initialState.availableCards,
+      selectedCards: initialState.selectedCards,
+      aiMarkedCardId: initialState.aiMarkedCardId,
+      submittedCombinations: initialState.submittedCombinations,
+      finalScore: initialState.finalScore,
   
   setUserInfo: (userInfo: UserInfo) => {
     set({ userInfo })
@@ -105,13 +115,15 @@ export const useGameStore = create<GameStore>()(
     gameStorage.clearAll()
     const initialState = getInitialState()
     set({
-      userInfo: initialState.userInfo || null,
-      gameState: initialState.gameState || GameState.ONBOARDING,
-      availableCards: initialState.availableCards || [],
-      selectedCards: initialState.selectedCards || [],
-      aiMarkedCardId: initialState.aiMarkedCardId || null,
-      submittedCombinations: initialState.submittedCombinations || [],
-      finalScore: initialState.finalScore || null,
+      userInfo: initialState.userInfo,
+      gameState: initialState.gameState,
+      availableCards: initialState.availableCards,
+      selectedCards: initialState.selectedCards,
+      aiMarkedCardId: initialState.aiMarkedCardId,
+      submittedCombinations: initialState.submittedCombinations,
+      finalScore: initialState.finalScore,
     })
   },
-})))
+    }
+  })
+)

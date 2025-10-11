@@ -45,12 +45,9 @@ export const storage = {
   }
 }
 
-// 定义类型接口
-interface UserInfo {
-  nickname: string
-  [key: string]: unknown
-}
+import { UserInfo } from '../types'
 
+// 定义类型接口
 interface GameProgress {
   submittedCombinations: unknown[]
   finalScore: number | null
