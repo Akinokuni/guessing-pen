@@ -1,0 +1,112 @@
+{
+  "registry": {
+    "url": "registry.cn-hangzhou.aliyuncs.com",
+    "region": "cn-hangzhou",
+    "namespace": "guessing-pen",
+    "description": "旮旯画师项目镜像仓库"
+  },
+  "repositories": [
+    {
+      "name": "guessing-pen-frontend",
+      "description": "旮旯画师前端应用镜像",
+      "detail": "基于React + TypeScript的前端应用Docker镜像，使用Nginx作为Web服务器",
+      "type": "PUBLIC",
+      "dockerfile": "Dockerfile",
+      "context": ".",
+      "tags": {
+        "latest": "最新稳定版本",
+        "main-{commit}": "主分支构建版本",
+        "v{version}": "语义化版本标签"
+      }
+    },
+    {
+      "name": "guessing-pen-api",
+      "description": "旮旯画师API服务镜像",
+      "detail": "基于Node.js + Express的API服务Docker镜像，连接PostgreSQL数据库",
+      "type": "PUBLIC",
+      "dockerfile": "Dockerfile.api",
+      "context": ".",
+      "tags": {
+        "latest": "最新稳定版本",
+        "main-{commit}": "主分支构建版本",
+        "v{version}": "语义化版本标签"
+      }
+    }
+  ],
+  "build": {
+    "args": {
+      "BUILD_DATE": "构建日期时间戳",
+      "VERSION": "版本号",
+      "GIT_COMMIT": "Git提交哈希",
+      "GIT_BRANCH": "Git分支名",
+      "GIT_TAG": "Git标签名",
+      "NODE_ENV": "Node.js环境"
+    },
+    "labels": {
+      "org.opencontainers.image.created": "镜像创建时间",
+      "org.opencontainers.image.source": "源代码仓库地址",
+      "org.opencontainers.image.version": "镜像版本",
+      "org.opencontainers.image.revision": "Git提交哈希",
+      "org.opencontainers.image.title": "镜像标题",
+      "org.opencontainers.image.description": "镜像描述",
+      "org.opencontainers.image.vendor": "供应商",
+      "org.opencontainers.image.licenses": "许可证",
+      "maintainer": "维护者",
+      "git.commit": "Git提交哈希",
+      "git.branch": "Git分支",
+      "git.tag": "Git标签"
+    }
+  },
+  "tagging": {
+    "strategy": "semantic",
+    "patterns": {
+      "development": "{branch}-{commit}",
+      "staging": "staging-{version}",
+      "production": "v{version}",
+      "latest": "latest"
+    },
+    "rules": {
+      "main_branch": {
+        "branch": "main",
+        "tags": ["latest", "main-{commit}"]
+      },
+      "release_tag": {
+        "pattern": "v*.*.*",
+        "tags": ["v{version}", "latest"]
+      },
+      "feature_branch": {
+        "pattern": "feature/*",
+        "tags": ["{branch}-{commit}"]
+      }
+    }
+  },
+  "security": {
+    "scan_on_push": true,
+    "vulnerability_threshold": "HIGH",
+    "base_images": {
+      "node": "node:18-alpine",
+      "nginx": "nginx:1.25-alpine"
+    }
+  },
+  "cleanup": {
+    "retention_policy": {
+      "keep_latest": 10,
+      "keep_tagged": true,
+      "max_age_days": 90
+    },
+    "auto_cleanup": true
+  },
+  "monitoring": {
+    "metrics": {
+      "push_count": "镜像推送次数",
+      "pull_count": "镜像拉取次数",
+      "size_trend": "镜像大小趋势",
+      "build_time": "构建时间"
+    },
+    "alerts": {
+      "build_failure": "构建失败告警",
+      "size_increase": "镜像大小异常增长告警",
+      "vulnerability": "安全漏洞告警"
+    }
+  }
+}

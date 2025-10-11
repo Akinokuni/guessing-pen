@@ -1,105 +1,188 @@
+# Docker Compose 开发环境配置
+# 用于本地开发和测试
+
 version: '3.8'
 
+# ================================
+# 服务定义
+# ================================
 services:
-  # PostgREST API 服务
-  postgrest:
-    image: postgrest/postgrest:latest
-    container_name: guessing-pen-postgrest
-    ports:
-      - "3001:3001"
-    environment:
-      PGRST_DB_URI: postgres://aki:20138990398QGL@gmailcom@pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com:5432/postgres
-      PGRST_DB_SCHEMAS: public
-      PGRST_DB_ANON_ROLE: web_anon
-      PGRST_DB_POOL: 10
-      PGRST_DB_POOL_TIMEOUT: 10
-      PGRST_SERVER_HOST: 0.0.0.0
-      PGRST_SERVER_PORT: 3001
-      PGRST_LOG_LEVEL: info
-      PGRST_OPENAPI_MODE: follow-privileges
-    restart: unless-stopped
-    networks:
-      - guessing-pen-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    labels:
-      - "com.guessing-pen.description=PostgREST API服务"
-      - "com.guessing-pen.version=${VERSION:-latest}"
-
-  # 前端应用
-  guessing-pen-frontend:
+  # 前端开发服务
+  frontend-dev:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
       args:
-        - BUILD_DATE=${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
-        - VERSION=${VERSION:-latest}
-    container_name: guessing-pen-challenge
+        - BUILD_DATE=${BUILD_DATE:-}
+        - VERSION=${VERSION:-dev}
+        - NODE_ENV=development
+    container_name: guessing-pen-frontend-dev
     ports:
-      - "80:80"
-      - "443:443"  # 为HTTPS预留
+      - "${FRONTEND_PORT:-3000}:80"
     environment:
-      - VITE_POSTGREST_URL=http://postgrest:3001
-      - VITE_USE_POSTGREST=true
-      - NODE_ENV=production
+      - NODE_ENV=development
+      - VITE_POSTGREST_URL=${VITE_POSTGREST_URL:-http://api-dev:3005}
+      - VITE_USE_POSTGREST=${VITE_USE_POSTGREST:-false}
+      - VITE_USE_DIRECT_DB=${VITE_USE_DIRECT_DB:-true}
     volumes:
-      # 持久化日志
-      - ./logs:/var/log/nginx
-      # 持久化nginx缓存
+      # 开发时挂载源码（热重载）
+      - ./src:/app/src:ro
+      - ./public:/app/public:ro
+      # 日志目录
+      - ./logs/nginx:/var/log/nginx:rw
       - nginx_cache:/var/cache/nginx
     restart: unless-stopped
+    depends_on:
+      api-dev:
+        condition: service_healthy
+    networks:
+      - guessing-pen-dev-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - guessing-pen-network
     labels:
-      - "com.guessing-pen.description=猜猜笔挑战前端应用"
-      - "com.guessing-pen.version=${VERSION:-latest}"
-      - "traefik.enable=true"
-      - "traefik.http.routers.guessing-pen.rule=Host(`localhost`)"
-      - "traefik.http.routers.guessing-pen.entrypoints=web"
+      - "com.guessing-pen.service=frontend-dev"
+      - "com.guessing-pen.description=前端开发服务"
+      - "com.guessing-pen.version=${VERSION:-dev}"
 
-  # 开发环境的 Supabase（可选）
-  supabase-db:
-    image: supabase/postgres:15.1.0.117
-    container_name: guessing-pen-db
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-    volumes:
-      - supabase_db_data:/var/lib/postgresql/data
-      - ./supabase/migrations:/docker-entrypoint-initdb.d
+  # API开发服务
+  api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: production
+      args:
+        - BUILD_DATE=${BUILD_DATE:-}
+        - VERSION=${VERSION:-dev}
+        - NODE_ENV=development
+    container_name: guessing-pen-api-dev
     ports:
-      - "54322:5432"
+      - "${API_PORT:-3005}:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - HOST=0.0.0.0
+      # 数据库配置
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_SSL=${DB_SSL:-false}
+    volumes:
+      # 开发时挂载源码
+      - ./scripts/development:/app/scripts/development:ro
+      - ./database:/app/database:ro
+      # 日志目录
+      - ./logs/api:/app/logs:rw
     restart: unless-stopped
     networks:
-      - guessing-pen-network
-    profiles:
-      - dev
+      - guessing-pen-dev-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD", "curl", "-f", "http://localhost:3005/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
+    labels:
+      - "com.guessing-pen.service=api-dev"
+      - "com.guessing-pen.description=API开发服务"
+      - "com.guessing-pen.version=${VERSION:-dev}"
 
+  # PostgREST服务（开发环境可选）
+  postgrest-dev:
+    image: postgrest/postgrest:v12.0.2
+    container_name: guessing-pen-postgrest-dev
+    ports:
+      - "${POSTGREST_PORT:-3001}:3000"
+    environment:
+      # 数据库连接
+      PGRST_DB_URI: postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: ${DB_USER}
+      PGRST_DB_POOL: 5
+      PGRST_DB_POOL_TIMEOUT: 10
+      PGRST_SERVER_HOST: 0.0.0.0
+      PGRST_SERVER_PORT: 3000
+      PGRST_LOG_LEVEL: ${POSTGREST_LOG_LEVEL:-debug}
+      PGRST_OPENAPI_MODE: follow-privileges
+    restart: unless-stopped
+    networks:
+      - guessing-pen-dev-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.guessing-pen.service=postgrest-dev"
+      - "com.guessing-pen.description=PostgREST开发服务"
+      - "com.guessing-pen.version=${VERSION:-dev}"
+    profiles:
+      - postgrest  # 可选服务
+
+  # 本地PostgreSQL数据库（开发环境）
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: guessing-pen-postgres-dev
+    environment:
+      POSTGRES_DB: ${LOCAL_DB_NAME:-guessing_pen_db}
+      POSTGRES_USER: ${LOCAL_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/init_user_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+    ports:
+      - "${LOCAL_DB_PORT:-54322}:5432"
+    restart: unless-stopped
+    networks:
+      - guessing-pen-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOCAL_DB_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "com.guessing-pen.service=postgres-dev"
+      - "com.guessing-pen.description=PostgreSQL开发数据库"
+      - "com.guessing-pen.version=${VERSION:-dev}"
+    profiles:
+      - local-db  # 可选服务，用于本地开发
+
+# ================================
+# 网络配置
+# ================================
 networks:
-  guessing-pen-network:
+  guessing-pen-dev-network:
     driver: bridge
-    name: guessing-pen-network
+    name: guessing-pen-dev-network
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
 
+# ================================
+# 数据卷配置
+# ================================
 volumes:
-  supabase_db_data:
-    name: guessing-pen-db-data
+  # PostgreSQL开发数据
+  postgres_dev_data:
+    name: guessing-pen-postgres-dev-data
+    driver: local
+  
+  # Nginx缓存
   nginx_cache:
-    name: guessing-pen-nginx-cache
+    name: guessing-pen-nginx-cache-dev
+    driver: local
+  
+  # 开发日志
+  dev_logs:
+    name: guessing-pen-dev-logs
+    driver: local

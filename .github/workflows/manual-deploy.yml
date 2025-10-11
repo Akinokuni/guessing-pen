@@ -1,0 +1,397 @@
+name: 手动部署和回滚
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: '操作类型'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - rollback
+          - restart
+      environment:
+        description: '部署环境'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      version:
+        description: '版本标签 (部署时必填，回滚时可选)'
+        required: false
+        type: string
+      force:
+        description: '强制执行 (跳过健康检查)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  ACR_REGISTRY: registry.cn-hangzhou.aliyuncs.com
+  ACR_NAMESPACE: guessing-pen
+  FRONTEND_IMAGE: guessing-pen-frontend
+  API_IMAGE: guessing-pen-api
+
+jobs:
+  manual-operation:
+    name: ${{ inputs.action }} - ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.PRODUCTION_URL }}
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 验证输入参数
+        run: |
+          echo "🔍 验证输入参数..."
+          
+          ACTION="${{ inputs.action }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+          VERSION="${{ inputs.version }}"
+          FORCE="${{ inputs.force }}"
+          
+          echo "操作类型: ${ACTION}"
+          echo "部署环境: ${ENVIRONMENT}"
+          echo "版本标签: ${VERSION:-未指定}"
+          echo "强制执行: ${FORCE}"
+          
+          # 验证部署操作必须指定版本
+          if [[ "${ACTION}" == "deploy" && -z "${VERSION}" ]]; then
+            echo "❌ 部署操作必须指定版本标签"
+            exit 1
+          fi
+          
+          # 设置环境变量
+          echo "ACTION=${ACTION}" >> $GITHUB_ENV
+          echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "FORCE=${FORCE}" >> $GITHUB_ENV
+      
+      - name: 获取服务器配置
+        run: |
+          # 根据环境设置服务器配置
+          if [[ "${{ env.ENVIRONMENT }}" == "production" ]]; then
+            echo "SERVER_HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
+            echo "SERVER_USER=${{ secrets.PROD_SERVER_USER }}" >> $GITHUB_ENV
+            echo "SERVER_SSH_KEY=${{ secrets.PROD_SERVER_SSH_KEY }}" >> $GITHUB_ENV
+            echo "SERVER_PORT=${{ secrets.PROD_SERVER_PORT || 22 }}" >> $GITHUB_ENV
+            echo "DEPLOY_PATH=/opt/guessing-pen" >> $GITHUB_ENV
+          elif [[ "${{ env.ENVIRONMENT }}" == "staging" ]]; then
+            echo "SERVER_HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
+            echo "SERVER_USER=${{ secrets.STAGING_SERVER_USER }}" >> $GITHUB_ENV
+            echo "SERVER_SSH_KEY=${{ secrets.STAGING_SERVER_SSH_KEY }}" >> $GITHUB_ENV
+            echo "SERVER_PORT=${{ secrets.STAGING_SERVER_PORT || 22 }}" >> $GITHUB_ENV
+            echo "DEPLOY_PATH=/opt/guessing-pen-staging" >> $GITHUB_ENV
+          fi
+      
+      - name: 执行操作 - ${{ inputs.action }}
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          port: ${{ env.SERVER_PORT }}
+          script: |
+            set -e
+            
+            # 设置变量
+            ACTION="${{ env.ACTION }}"
+            ENVIRONMENT="${{ env.ENVIRONMENT }}"
+            VERSION="${{ env.VERSION }}"
+            FORCE="${{ env.FORCE }}"
+            DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
+            
+            ACR_REGISTRY="${{ env.ACR_REGISTRY }}"
+            ACR_NAMESPACE="${{ env.ACR_NAMESPACE }}"
+            FRONTEND_IMAGE="${ACR_REGISTRY}/${ACR_NAMESPACE}/${{ env.FRONTEND_IMAGE }}"
+            API_IMAGE="${ACR_REGISTRY}/${ACR_NAMESPACE}/${{ env.API_IMAGE }}"
+            
+            # 创建部署目录
+            mkdir -p "${DEPLOY_PATH}"
+            cd "${DEPLOY_PATH}"
+            
+            # 创建日志目录
+            mkdir -p logs backups
+            
+            # 设置日志文件
+            LOG_FILE="logs/manual-${ACTION}-$(date +%Y%m%d-%H%M%S).log"
+            
+            # 日志函数
+            log_info() {
+              echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+            }
+            
+            log_success() {
+              echo "[SUCCESS] $(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+            }
+            
+            log_error() {
+              echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+              exit 1
+            }
+            
+            # 健康检查函数
+            health_check() {
+              local max_attempts=10
+              local attempt=1
+              
+              log_info "执行健康检查..."
+              
+              while [[ $attempt -le $max_attempts ]]; do
+                log_info "健康检查尝试 ${attempt}/${max_attempts}"
+                
+                # 检查前端服务
+                if curl -f -s http://localhost:80/health > /dev/null 2>&1; then
+                  log_info "✅ 前端服务健康"
+                else
+                  log_info "❌ 前端服务异常"
+                  if [[ "$FORCE" != "true" ]]; then
+                    ((attempt++))
+                    sleep 10
+                    continue
+                  fi
+                fi
+                
+                # 检查API服务
+                if curl -f -s http://localhost:3005/health > /dev/null 2>&1; then
+                  log_info "✅ API服务健康"
+                else
+                  log_info "❌ API服务异常"
+                  if [[ "$FORCE" != "true" ]]; then
+                    ((attempt++))
+                    sleep 10
+                    continue
+                  fi
+                fi
+                
+                log_success "健康检查通过"
+                return 0
+              done
+              
+              if [[ "$FORCE" == "true" ]]; then
+                log_info "⚠️ 强制模式：跳过健康检查失败"
+                return 0
+              else
+                log_error "健康检查失败，已达到最大重试次数"
+              fi
+            }
+            
+            # 备份当前状态
+            backup_current_state() {
+              log_info "备份当前状态..."
+              
+              local backup_file="backups/backup-$(date +%Y%m%d-%H%M%S).json"
+              
+              # 获取当前运行的容器信息
+              local current_containers=$(docker-compose -f docker-compose.prod.yml ps --format json 2>/dev/null || echo "[]")
+              
+              # 获取当前镜像信息
+              local frontend_image=$(docker images "${FRONTEND_IMAGE}" --format "{{.Tag}}" | head -1 2>/dev/null || echo "unknown")
+              local api_image=$(docker images "${API_IMAGE}" --format "{{.Tag}}" | head -1 2>/dev/null || echo "unknown")
+              
+              # 创建备份信息
+              cat > "$backup_file" << EOF
+            {
+              "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+              "environment": "${ENVIRONMENT}",
+              "images": {
+                "frontend": "${FRONTEND_IMAGE}:${frontend_image}",
+                "api": "${API_IMAGE}:${api_image}"
+              },
+              "containers": ${current_containers}
+            }
+            EOF
+              
+              log_success "状态备份完成: $backup_file"
+              echo "BACKUP_FILE=$backup_file" >> backup_info.env
+            }
+            
+            # 执行部署
+            execute_deploy() {
+              log_info "🚀 开始部署版本: ${VERSION}"
+              
+              # 登录ACR
+              log_info "🔐 登录阿里云ACR..."
+              echo "${{ secrets.ACR_PASSWORD }}" | docker login $ACR_REGISTRY -u "${{ secrets.ACR_USERNAME }}" --password-stdin
+              
+              # 拉取指定版本镜像
+              log_info "📥 拉取镜像版本: ${VERSION}"
+              docker pull "${FRONTEND_IMAGE}:${VERSION}"
+              docker pull "${API_IMAGE}:${VERSION}"
+              
+              # 更新latest标签
+              docker tag "${FRONTEND_IMAGE}:${VERSION}" "${FRONTEND_IMAGE}:latest"
+              docker tag "${API_IMAGE}:${VERSION}" "${API_IMAGE}:latest"
+              
+              # 停止旧服务
+              log_info "⏹️ 停止旧服务..."
+              docker-compose -f docker-compose.prod.yml down --remove-orphans || true
+              
+              # 启动新服务
+              log_info "🚀 启动新服务..."
+              docker-compose -f docker-compose.prod.yml up -d
+              
+              # 等待服务启动
+              sleep 30
+              
+              # 健康检查
+              health_check
+              
+              # 记录部署信息
+              cat > "deployment-info.json" << EOF
+            {
+              "version": "${VERSION}",
+              "deployTime": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+              "environment": "${ENVIRONMENT}",
+              "deployedBy": "Manual Deploy - ${{ github.actor }}",
+              "workflowRun": "${{ github.run_id }}",
+              "frontendImage": "${FRONTEND_IMAGE}:${VERSION}",
+              "apiImage": "${API_IMAGE}:${VERSION}"
+            }
+            EOF
+              
+              log_success "🎉 部署完成！版本: ${VERSION}"
+            }
+            
+            # 执行回滚
+            execute_rollback() {
+              log_info "🔄 开始回滚操作..."
+              
+              # 如果指定了版本，回滚到指定版本
+              if [[ -n "${VERSION}" ]]; then
+                log_info "回滚到指定版本: ${VERSION}"
+                
+                # 登录ACR
+                echo "${{ secrets.ACR_PASSWORD }}" | docker login $ACR_REGISTRY -u "${{ secrets.ACR_USERNAME }}" --password-stdin
+                
+                # 拉取指定版本
+                docker pull "${FRONTEND_IMAGE}:${VERSION}"
+                docker pull "${API_IMAGE}:${VERSION}"
+                
+                # 更新标签
+                docker tag "${FRONTEND_IMAGE}:${VERSION}" "${FRONTEND_IMAGE}:latest"
+                docker tag "${API_IMAGE}:${VERSION}" "${API_IMAGE}:latest"
+              else
+                # 回滚到上一个备份
+                log_info "回滚到上一个备份版本..."
+                
+                # 查找最新的备份文件
+                local latest_backup=$(ls -t backups/backup-*.json 2>/dev/null | head -1)
+                
+                if [[ -z "$latest_backup" ]]; then
+                  log_error "未找到备份文件，无法回滚"
+                fi
+                
+                log_info "使用备份文件: $latest_backup"
+                
+                # 从备份文件中提取镜像信息
+                local frontend_backup_image=$(jq -r '.images.frontend' "$latest_backup")
+                local api_backup_image=$(jq -r '.images.api' "$latest_backup")
+                
+                log_info "回滚镜像: 前端=${frontend_backup_image}, API=${api_backup_image}"
+                
+                # 拉取备份版本镜像
+                docker pull "$frontend_backup_image"
+                docker pull "$api_backup_image"
+                
+                # 更新标签
+                docker tag "$frontend_backup_image" "${FRONTEND_IMAGE}:latest"
+                docker tag "$api_backup_image" "${API_IMAGE}:latest"
+              fi
+              
+              # 重启服务
+              log_info "🔄 重启服务..."
+              docker-compose -f docker-compose.prod.yml down --remove-orphans
+              docker-compose -f docker-compose.prod.yml up -d
+              
+              # 等待服务启动
+              sleep 30
+              
+              # 健康检查
+              health_check
+              
+              log_success "🎉 回滚完成！"
+            }
+            
+            # 执行重启
+            execute_restart() {
+              log_info "🔄 重启服务..."
+              
+              # 重启服务
+              docker-compose -f docker-compose.prod.yml restart
+              
+              # 等待服务启动
+              sleep 20
+              
+              # 健康检查
+              health_check
+              
+              log_success "🎉 服务重启完成！"
+            }
+            
+            # 主执行逻辑
+            log_info "开始执行操作: ${ACTION}"
+            
+            # 备份当前状态（除了重启操作）
+            if [[ "${ACTION}" != "restart" ]]; then
+              backup_current_state
+            fi
+            
+            # 根据操作类型执行相应操作
+            case "${ACTION}" in
+              "deploy")
+                execute_deploy
+                ;;
+              "rollback")
+                execute_rollback
+                ;;
+              "restart")
+                execute_restart
+                ;;
+              *)
+                log_error "未知操作类型: ${ACTION}"
+                ;;
+            esac
+            
+            log_success "操作完成: ${ACTION}"
+      
+      - name: 操作结果通知
+        if: always()
+        run: |
+          # 确定操作状态
+          if [[ "${{ job.status }}" == "success" ]]; then
+            STATUS="✅ 成功"
+            COLOR="good"
+          else
+            STATUS="❌ 失败"
+            COLOR="danger"
+          fi
+          
+          # 构建通知消息
+          MESSAGE="🔧 **旮旯画师手动操作通知**
+          
+          **操作**: ${{ inputs.action }}
+          **环境**: ${{ inputs.environment }}
+          **状态**: ${STATUS}
+          **版本**: ${{ inputs.version || '未指定' }}
+          **强制执行**: ${{ inputs.force }}
+          **操作者**: ${{ github.actor }}
+          **工作流**: ${{ github.run_id }}
+          **时间**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          
+          **查看详情**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          echo "操作通知: ${MESSAGE}"
+          
+          # 这里可以集成实际的通知服务
+          # curl -X POST -H 'Content-Type: application/json' \
+          #   -d "{\"text\": \"${MESSAGE}\"}" \
+          #   "${{ secrets.WEBHOOK_URL }}"

@@ -1,65 +1,72 @@
-# 猜猜笔挑战 - Release 版本 Docker 忽略文件
+# Docker 构建忽略文件
+# 优化Docker镜像大小和构建速度
 
-# 依赖目录
-node_modules
+# ================================
+# Node.js 相关
+# ================================
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.npm/
+.yarn/
+.pnp.*
 
-# 构建输出（保留 dist 用于生产构建）
-build
+# ================================
+# 构建输出和缓存
+# ================================
+dist/
+build/
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist/
+.serverless/
 
-# 开发工具
-.vscode
-.idea
+# ================================
+# 开发工具和IDE
+# ================================
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
+.project
+.classpath
+.settings/
 
+# ================================
 # 版本控制
-.git
+# ================================
+.git/
 .gitignore
 .gitattributes
+.gitmodules
 
-# 环境文件（保留 .env.example）
+# ================================
+# 环境配置文件
+# ================================
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+!.env.docker
 
-# 日志文件
-logs
+# ================================
+# 日志和运行时文件
+# ================================
+logs/
 *.log
-
-# 运行时数据
-pids
+pids/
 *.pid
 *.seed
 *.pid.lock
+.nyc_output/
+coverage/
 
-# 覆盖率目录
-coverage
-.nyc_output
-
-# 依赖目录
-.npm
-.eslintcache
-
-# 可选 npm 缓存目录
-.npm
-
-# 可选 REPL 历史
-.node_repl_history
-
-# 输出目录
-out
-
-# 临时文件
-.tmp
-.temp
-
-# 操作系统生成的文件
+# ================================
+# 操作系统文件
+# ================================
 .DS_Store
 .DS_Store?
 ._*
@@ -67,47 +74,102 @@ out
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
+# ================================
 # 测试文件
+# ================================
 test/
 tests/
 __tests__/
 *.test.js
 *.test.ts
+*.test.tsx
 *.spec.js
 *.spec.ts
+*.spec.tsx
+jest.config.*
+vitest.config.*
 
-# 备份文件
-backup/
+# ================================
+# 文档和说明
+# ================================
+docs/
+*.md
+!README.md
+CHANGELOG*
+LICENSE*
+
+# ================================
+# 临时文件和备份
+# ================================
+.tmp/
+.temp/
+*.tmp
+*.temp
 *.backup
 *.bak
+*.swp
+*.swo
 
+# ================================
 # 压缩文件
+# ================================
 *.zip
+*.tar
 *.tar.gz
 *.rar
+*.7z
 
-# 开发数据库
+# ================================
+# 数据库文件
+# ================================
 *.db
 *.sqlite
 *.sqlite3
+database/backups/
 
-# 本地配置文件
-local.json
-config.local.json
-
-# 开发配置（保留生产配置）
+# ================================
+# 开发配置
+# ================================
 .eslintrc*
 .prettierrc*
+.editorconfig
+.stylelintrc*
+jest.config.*
+vitest.config.*
+playwright.config.*
 
-# 文档（保留部署相关文档）
-docs/
-docs-archive/
+# ================================
+# 部署和CI/CD
+# ================================
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+.jenkins/
+Jenkinsfile
+.dockerignore
 
-# 注意：以下文件在 release 版本中需要保留
-# - Dockerfile
-# - docker-compose.yml
-# - nginx.conf
-# - supabase/
-# - DEPLOYMENT.md
-# - README.md
+# ================================
+# 特定于项目的忽略
+# ================================
+# Supabase 开发文件
+supabase/.temp/
+supabase/logs/
+
+# 脚本文件（除了必要的）
+scripts/testing/
+scripts/development/
+
+# 保留的重要文件（明确不忽略）
+!Dockerfile
+!Dockerfile.*
+!docker-compose*.yml
+!nginx.conf
+!package.json
+!package-lock.json
+!tsconfig.json
+!vite.config.ts
+!tailwind.config.js
+!postcss.config.js

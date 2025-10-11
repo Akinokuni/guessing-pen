@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/guessing-pen-frontend:${IMAGE_TAG:-dev-latest}
+    container_name: guessing-pen-frontend-dev
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3005
+    networks:
+      - guessing-pen-dev
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend-dev.rule=Host(`dev.your-domain.com`)"
+      - "traefik.http.services.frontend-dev.loadbalancer.server.port=80"
+
+  api:
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/guessing-pen-api:${IMAGE_TAG:-dev-latest}
+    container_name: guessing-pen-api-dev
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_SSL=false
+      - LOG_LEVEL=debug
+    networks:
+      - guessing-pen-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-dev.rule=Host(`api-dev.your-domain.com`)"
+      - "traefik.http.services.api-dev.loadbalancer.server.port=3005"
+
+  # 开发环境数据库（可选，如果不使用云数据库）
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: postgres-dev
+    environment:
+      - POSTGRES_DB=${DB_NAME:-guessing_pen_dev}
+      - POSTGRES_USER=${DB_USER:-dev_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-dev_password}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    networks:
+      - guessing-pen-dev
+    restart: unless-stopped
+
+  # Redis缓存（开发环境）
+  redis-dev:
+    image: redis:7-alpine
+    container_name: redis-dev
+    ports:
+      - "6380:6379"
+    networks:
+      - guessing-pen-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+
+networks:
+  guessing-pen-dev:
+    driver: bridge
+    name: guessing-pen-dev-network
+
+volumes:
+  postgres_dev_data:
+    name: guessing-pen-postgres-dev-data
+  redis_dev_data:
+    name: guessing-pen-redis-dev-data

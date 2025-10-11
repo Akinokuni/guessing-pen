@@ -1,24 +1,126 @@
 # Docker Compose 生产环境配置
+# 基于阿里云ACR + GitHub Actions自动化部署设计
+
 version: '3.8'
 
+# ================================
+# 服务定义
+# ================================
 services:
-  # PostgREST API 服务
+  # 前端应用服务
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - BUILD_DATE=${BUILD_DATE:-}
+        - VERSION=${VERSION:-latest}
+        - NODE_ENV=production
+    image: ${ACR_REGISTRY:-registry.cn-hangzhou.aliyuncs.com}/${ACR_NAMESPACE:-guessing-pen}/frontend:${VERSION:-latest}
+    container_name: guessing-pen-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    environment:
+      - NODE_ENV=production
+      - VITE_POSTGREST_URL=${VITE_POSTGREST_URL:-http://api:3005}
+      - VITE_USE_POSTGREST=${VITE_USE_POSTGREST:-false}
+      - VITE_USE_DIRECT_DB=${VITE_USE_DIRECT_DB:-true}
+    volumes:
+      # 持久化日志
+      - ./logs/nginx:/var/log/nginx:rw
+      - nginx_cache:/var/cache/nginx
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - guessing-pen-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.guessing-pen.service=frontend"
+      - "com.guessing-pen.description=前端应用"
+      - "com.guessing-pen.version=${VERSION:-latest}"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+
+  # API服务
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: production
+      args:
+        - BUILD_DATE=${BUILD_DATE:-}
+        - VERSION=${VERSION:-latest}
+        - NODE_ENV=production
+    image: ${ACR_REGISTRY:-registry.cn-hangzhou.aliyuncs.com}/${ACR_NAMESPACE:-guessing-pen}/api:${VERSION:-latest}
+    container_name: guessing-pen-api
+    ports:
+      - "${API_PORT:-3005}:3005"
+    environment:
+      - NODE_ENV=production
+      - PORT=3005
+      - HOST=0.0.0.0
+      # 数据库配置
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_SSL=${DB_SSL:-false}
+    volumes:
+      # 持久化日志
+      - ./logs/api:/app/logs:rw
+    restart: unless-stopped
+    networks:
+      - guessing-pen-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "com.guessing-pen.service=api"
+      - "com.guessing-pen.description=API服务"
+      - "com.guessing-pen.version=${VERSION:-latest}"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
+  # PostgREST服务（可选，用于直接数据库访问）
   postgrest:
-    image: postgrest/postgrest:latest
+    image: postgrest/postgrest:v12.0.2
     container_name: guessing-pen-postgrest
     ports:
-      - "3001:3000"
+      - "${POSTGREST_PORT:-3001}:3000"
     environment:
-      # 注意：密码中的特殊字符需要 URL 编码
-      # @ 编码为 %40
-      PGRST_DB_URI: postgres://aki:20138990398QGL%40gmailcom@pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com:5432/aki
+      # 数据库连接（使用环境变量）
+      PGRST_DB_URI: postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: ${DB_USER}
       PGRST_DB_POOL: 10
       PGRST_DB_POOL_TIMEOUT: 10
       PGRST_SERVER_HOST: 0.0.0.0
       PGRST_SERVER_PORT: 3000
-      PGRST_LOG_LEVEL: info
+      PGRST_LOG_LEVEL: ${POSTGREST_LOG_LEVEL:-info}
       PGRST_OPENAPI_MODE: follow-privileges
     restart: unless-stopped
     networks:
@@ -32,42 +134,39 @@ services:
     labels:
       - "com.guessing-pen.service=postgrest"
       - "com.guessing-pen.description=PostgREST API服务"
+      - "com.guessing-pen.version=${VERSION:-latest}"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    profiles:
+      - postgrest  # 可选服务，通过profile控制
 
-  # 前端应用
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    container_name: guessing-pen-frontend
-    ports:
-      - "80:80"
-    environment:
-      - NODE_ENV=production
-    volumes:
-      - ./logs/nginx:/var/log/nginx
-      - nginx_cache:/var/cache/nginx
-    restart: unless-stopped
-    depends_on:
-      postgrest:
-        condition: service_healthy
-    networks:
-      - guessing-pen-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    labels:
-      - "com.guessing-pen.service=frontend"
-      - "com.guessing-pen.description=前端应用"
-
+# ================================
+# 网络配置
+# ================================
 networks:
   guessing-pen-network:
     driver: bridge
     name: guessing-pen-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
+# ================================
+# 数据卷配置
+# ================================
 volumes:
+  # Nginx缓存
   nginx_cache:
     name: guessing-pen-nginx-cache
+    driver: local
+  
+  # 应用日志
+  app_logs:
+    name: guessing-pen-logs
+    driver: local

@@ -1,0 +1,73 @@
+{
+  "email": {
+    "enabled": false,
+    "smtp_server": "smtp.example.com",
+    "smtp_port": 587,
+    "username": "",
+    "password": "",
+    "from": "noreply@example.com",
+    "recipients": [
+      "admin@example.com"
+    ]
+  },
+  "webhook": {
+    "enabled": true,
+    "url": "${WEBHOOK_URL}",
+    "timeout": 30,
+    "retry_count": 3
+  },
+  "sms": {
+    "enabled": false,
+    "provider": "aliyun",
+    "access_key": "",
+    "access_secret": "",
+    "sign_name": "",
+    "template_code": "",
+    "phone_numbers": []
+  },
+  "alert_levels": {
+    "critical": {
+      "email": true,
+      "webhook": true,
+      "sms": true
+    },
+    "error": {
+      "email": true,
+      "webhook": true,
+      "sms": false
+    },
+    "warning": {
+      "email": false,
+      "webhook": true,
+      "sms": false
+    },
+    "info": {
+      "email": false,
+      "webhook": false,
+      "sms": false
+    }
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "max_alerts_per_hour": 10,
+    "cooldown_minutes": 5
+  },
+  "templates": {
+    "deployment_failure": {
+      "title": "部署失败告警",
+      "message_template": "项目 {{project}} 在 {{stage}} 阶段部署失败。错误信息: {{error}}"
+    },
+    "health_check_failure": {
+      "title": "健康检查失败",
+      "message_template": "服务 {{service}} 健康检查失败，状态: {{status}}"
+    },
+    "rollback_success": {
+      "title": "自动回滚成功",
+      "message_template": "项目已成功回滚到版本 {{version}}"
+    },
+    "rollback_failure": {
+      "title": "自动回滚失败",
+      "message_template": "项目回滚失败，需要手动干预"
+    }
+  }
+}

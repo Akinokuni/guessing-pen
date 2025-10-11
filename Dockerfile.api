@@ -1,39 +1,110 @@
-# API 服务器 Dockerfile
-FROM node:18-alpine
+# API服务器 Dockerfile
+# 基于Node.js的后端API服务
+
+# ================================
+# 基础阶段 - 准备运行环境
+# ================================
+FROM node:18-alpine AS base
+
+# 设置构建参数
+ARG BUILD_DATE
+ARG VERSION=latest
+ARG GIT_COMMIT=unknown
+ARG GIT_BRANCH=unknown
+ARG GIT_TAG=
+ARG NODE_ENV=production
+
+# 添加OCI标准标签信息
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.source="https://github.com/your-username/guessing-pen" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_COMMIT}" \
+      org.opencontainers.image.title="旮旯画师API服务" \
+      org.opencontainers.image.description="基于Node.js + Express的旮旯画师API服务" \
+      org.opencontainers.image.vendor="Guessing Pen Team" \
+      org.opencontainers.image.licenses="MIT" \
+      maintainer="Guessing Pen Team" \
+      version="${VERSION}" \
+      git.commit="${GIT_COMMIT}" \
+      git.branch="${GIT_BRANCH}" \
+      git.tag="${GIT_TAG}"
 
 # 设置工作目录
 WORKDIR /app
 
-# 设置Alpine镜像源
+# 优化Alpine镜像源
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
-# 安装必要的系统依赖
-RUN apk add --no-cache curl postgresql-client
-
-# 复制 package 文件
-COPY package*.json ./
-
-# 设置npm镜像源
-RUN npm config set registry https://registry.npmmirror.com
-
-# 只安装生产依赖
-RUN npm ci --only=production --frozen-lockfile
-
-# 复制必要的文件
-COPY scripts/server-dev.js ./server.js
-COPY database/ ./database/
-COPY .env.example ./.env
+# 安装系统依赖
+RUN apk add --no-cache \
+    curl \
+    postgresql-client \
+    tzdata \
+    dumb-init \
+    && rm -rf /var/cache/apk/*
 
 # 设置时区
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# 创建非root用户
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodejs -u 1001
+
+# ================================
+# 依赖阶段 - 安装Node.js依赖
+# ================================
+FROM base AS dependencies
+
+# 复制package文件
+COPY package*.json ./
+
+# 配置npm
+RUN npm config set registry https://registry.npmmirror.com \
+    && npm config set disturl https://npmmirror.com/dist
+
+# 安装生产依赖
+RUN npm ci --only=production --frozen-lockfile --no-audit --no-fund \
+    && npm cache clean --force
+
+# ================================
+# 生产阶段 - 运行API服务
+# ================================
+FROM base AS production
+
+# 复制依赖
+COPY --from=dependencies --chown=nodejs:nodejs /app/node_modules ./node_modules
+
+# 复制应用代码
+COPY --chown=nodejs:nodejs scripts/development/server-dev.js ./server.js
+COPY --chown=nodejs:nodejs database/ ./database/
+COPY --chown=nodejs:nodejs .env.example ./.env
+
+# 创建日志目录
+RUN mkdir -p /app/logs \
+    && chown -R nodejs:nodejs /app/logs
+
+# 创建健康检查脚本
+RUN echo '#!/bin/sh\ncurl -f http://localhost:3005/api/health || exit 1' > /usr/local/bin/healthcheck.sh \
+    && chmod +x /usr/local/bin/healthcheck.sh
+
+# 设置环境变量
+ENV NODE_ENV=production
+ENV PORT=3005
+ENV HOST=0.0.0.0
+
 # 暴露端口
-EXPOSE 3001
+EXPOSE 3005
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:3001/api/health || exit 1
+    CMD /usr/local/bin/healthcheck.sh
 
-# 启动服务
+# 切换到非root用户
+USER nodejs
+
+# 使用dumb-init作为PID 1进程（处理信号）
+ENTRYPOINT ["dumb-init", "--"]
+
+# 启动API服务
 CMD ["node", "server.js"]

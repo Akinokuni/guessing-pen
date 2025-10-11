@@ -1,0 +1,446 @@
+name: 健康检查和监控
+
+on:
+  # 每15分钟执行一次健康检查
+  schedule:
+    - cron: '*/15 * * * *'
+  
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '检查环境'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - all
+      check_type:
+        description: '检查类型'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - basic
+          - performance
+          - security
+
+env:
+  # 健康检查超时时间（秒）
+  HEALTH_CHECK_TIMEOUT: 30
+  # 性能检查阈值
+  RESPONSE_TIME_THRESHOLD: 2000  # 2秒
+  ERROR_RATE_THRESHOLD: 5        # 5%
+
+jobs:
+  # 基础健康检查
+  basic-health-check:
+    name: 基础健康检查
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || inputs.check_type == 'full' || inputs.check_type == 'basic'
+    
+    strategy:
+      matrix:
+        environment: 
+          - ${{ (inputs.environment == 'all' && 'production') || (inputs.environment == 'all' && 'staging') || inputs.environment || 'production' }}
+    
+    outputs:
+      health-status: ${{ steps.health-check.outputs.status }}
+      response-time: ${{ steps.health-check.outputs.response-time }}
+      
+    steps:
+      - name: 设置环境变量
+        run: |
+          if [[ "${{ matrix.environment }}" == "production" ]]; then
+            echo "BASE_URL=${{ vars.PRODUCTION_URL }}" >> $GITHUB_ENV
+            echo "API_URL=${{ vars.PRODUCTION_URL }}/api" >> $GITHUB_ENV
+          elif [[ "${{ matrix.environment }}" == "staging" ]]; then
+            echo "BASE_URL=${{ vars.STAGING_URL }}" >> $GITHUB_ENV
+            echo "API_URL=${{ vars.STAGING_URL }}/api" >> $GITHUB_ENV
+          fi
+      
+      - name: 前端服务健康检查
+        id: frontend-check
+        run: |
+          echo "🌐 检查前端服务: ${{ env.BASE_URL }}"
+          
+          # 检查主页
+          start_time=$(date +%s%3N)
+          if curl -f -s -m ${{ env.HEALTH_CHECK_TIMEOUT }} "${{ env.BASE_URL }}" > /dev/null; then
+            end_time=$(date +%s%3N)
+            response_time=$((end_time - start_time))
+            echo "✅ 前端服务正常 (响应时间: ${response_time}ms)"
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "response-time=$response_time" >> $GITHUB_OUTPUT
+          else
+            echo "❌ 前端服务异常"
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "response-time=0" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # 检查健康检查端点
+          if curl -f -s -m ${{ env.HEALTH_CHECK_TIMEOUT }} "${{ env.BASE_URL }}/health" > /dev/null; then
+            echo "✅ 前端健康检查端点正常"
+          else
+            echo "⚠️ 前端健康检查端点异常"
+          fi
+      
+      - name: API服务健康检查
+        id: api-check
+        run: |
+          echo "🔧 检查API服务: ${{ env.API_URL }}"
+          
+          # 检查API健康端点
+          start_time=$(date +%s%3N)
+          if response=$(curl -f -s -m ${{ env.HEALTH_CHECK_TIMEOUT }} "${{ env.API_URL }}/health"); then
+            end_time=$(date +%s%3N)
+            response_time=$((end_time - start_time))
+            echo "✅ API服务正常 (响应时间: ${response_time}ms)"
+            echo "响应内容: $response"
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "response-time=$response_time" >> $GITHUB_OUTPUT
+          else
+            echo "❌ API服务异常"
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "response-time=0" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # 检查数据库连接
+          if curl -f -s -m ${{ env.HEALTH_CHECK_TIMEOUT }} "${{ env.API_URL }}/health/db" > /dev/null; then
+            echo "✅ 数据库连接正常"
+          else
+            echo "⚠️ 数据库连接异常"
+          fi
+      
+      - name: 综合健康状态
+        id: health-check
+        run: |
+          frontend_status="${{ steps.frontend-check.outputs.status }}"
+          api_status="${{ steps.api-check.outputs.status }}"
+          
+          frontend_time="${{ steps.frontend-check.outputs.response-time }}"
+          api_time="${{ steps.api-check.outputs.response-time }}"
+          
+          if [[ "$frontend_status" == "healthy" && "$api_status" == "healthy" ]]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "✅ ${{ matrix.environment }} 环境整体健康"
+          else
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "❌ ${{ matrix.environment }} 环境存在问题"
+            exit 1
+          fi
+          
+          # 计算平均响应时间
+          avg_response_time=$(( (frontend_time + api_time) / 2 ))
+          echo "response-time=$avg_response_time" >> $GITHUB_OUTPUT
+          echo "平均响应时间: ${avg_response_time}ms"
+
+  # 性能检查
+  performance-check:
+    name: 性能检查
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (inputs.check_type == 'full' || inputs.check_type == 'performance')
+    needs: basic-health-check
+    
+    strategy:
+      matrix:
+        environment: 
+          - ${{ (inputs.environment == 'all' && 'production') || (inputs.environment == 'all' && 'staging') || inputs.environment || 'production' }}
+    
+    steps:
+      - name: 设置环境变量
+        run: |
+          if [[ "${{ matrix.environment }}" == "production" ]]; then
+            echo "BASE_URL=${{ vars.PRODUCTION_URL }}" >> $GITHUB_ENV
+            echo "API_URL=${{ vars.PRODUCTION_URL }}/api" >> $GITHUB_ENV
+          elif [[ "${{ matrix.environment }}" == "staging" ]]; then
+            echo "BASE_URL=${{ vars.STAGING_URL }}" >> $GITHUB_ENV
+            echo "API_URL=${{ vars.STAGING_URL }}/api" >> $GITHUB_ENV
+          fi
+      
+      - name: 页面加载性能测试
+        run: |
+          echo "🚀 执行页面加载性能测试..."
+          
+          # 测试主页加载时间
+          for i in {1..5}; do
+            start_time=$(date +%s%3N)
+            curl -f -s -m 10 "${{ env.BASE_URL }}" > /dev/null
+            end_time=$(date +%s%3N)
+            response_time=$((end_time - start_time))
+            echo "第${i}次测试: ${response_time}ms"
+            
+            if [[ $response_time -gt ${{ env.RESPONSE_TIME_THRESHOLD }} ]]; then
+              echo "⚠️ 响应时间超过阈值: ${response_time}ms > ${{ env.RESPONSE_TIME_THRESHOLD }}ms"
+            fi
+          done
+      
+      - name: API性能测试
+        run: |
+          echo "🔧 执行API性能测试..."
+          
+          # 测试API端点性能
+          endpoints=(
+            "/health"
+            "/api/stats"
+            "/api/leaderboard"
+          )
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "测试端点: $endpoint"
+            
+            total_time=0
+            success_count=0
+            
+            for i in {1..10}; do
+              start_time=$(date +%s%3N)
+              if curl -f -s -m 5 "${{ env.BASE_URL }}$endpoint" > /dev/null; then
+                end_time=$(date +%s%3N)
+                response_time=$((end_time - start_time))
+                total_time=$((total_time + response_time))
+                success_count=$((success_count + 1))
+              fi
+            done
+            
+            if [[ $success_count -gt 0 ]]; then
+              avg_time=$((total_time / success_count))
+              success_rate=$((success_count * 100 / 10))
+              echo "  平均响应时间: ${avg_time}ms"
+              echo "  成功率: ${success_rate}%"
+              
+              if [[ $success_rate -lt $((100 - ${{ env.ERROR_RATE_THRESHOLD }})) ]]; then
+                echo "  ⚠️ 成功率低于阈值: ${success_rate}% < $((100 - ${{ env.ERROR_RATE_THRESHOLD }}))%"
+              fi
+            else
+              echo "  ❌ 所有请求都失败了"
+            fi
+          done
+
+  # 安全检查
+  security-check:
+    name: 安全检查
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (inputs.check_type == 'full' || inputs.check_type == 'security')
+    needs: basic-health-check
+    
+    strategy:
+      matrix:
+        environment: 
+          - ${{ (inputs.environment == 'all' && 'production') || (inputs.environment == 'all' && 'staging') || inputs.environment || 'production' }}
+    
+    steps:
+      - name: 设置环境变量
+        run: |
+          if [[ "${{ matrix.environment }}" == "production" ]]; then
+            echo "BASE_URL=${{ vars.PRODUCTION_URL }}" >> $GITHUB_ENV
+          elif [[ "${{ matrix.environment }}" == "staging" ]]; then
+            echo "BASE_URL=${{ vars.STAGING_URL }}" >> $GITHUB_ENV
+          fi
+      
+      - name: HTTP安全头检查
+        run: |
+          echo "🔒 检查HTTP安全头..."
+          
+          # 获取响应头
+          headers=$(curl -I -s "${{ env.BASE_URL }}")
+          
+          # 检查安全头
+          security_headers=(
+            "X-Content-Type-Options"
+            "X-Frame-Options"
+            "X-XSS-Protection"
+            "Strict-Transport-Security"
+            "Content-Security-Policy"
+          )
+          
+          for header in "${security_headers[@]}"; do
+            if echo "$headers" | grep -i "$header" > /dev/null; then
+              echo "✅ $header: 已设置"
+            else
+              echo "⚠️ $header: 未设置"
+            fi
+          done
+      
+      - name: SSL证书检查
+        run: |
+          echo "🔐 检查SSL证书..."
+          
+          # 提取域名
+          domain=$(echo "${{ env.BASE_URL }}" | sed 's|https\?://||' | sed 's|/.*||')
+          
+          if [[ "${{ env.BASE_URL }}" == https* ]]; then
+            # 检查SSL证书有效期
+            cert_info=$(echo | openssl s_client -servername "$domain" -connect "$domain:443" 2>/dev/null | openssl x509 -noout -dates 2>/dev/null)
+            
+            if [[ -n "$cert_info" ]]; then
+              echo "✅ SSL证书信息:"
+              echo "$cert_info"
+              
+              # 检查证书是否即将过期（30天内）
+              expiry_date=$(echo "$cert_info" | grep "notAfter" | cut -d= -f2)
+              expiry_timestamp=$(date -d "$expiry_date" +%s 2>/dev/null || echo "0")
+              current_timestamp=$(date +%s)
+              days_until_expiry=$(( (expiry_timestamp - current_timestamp) / 86400 ))
+              
+              if [[ $days_until_expiry -lt 30 ]]; then
+                echo "⚠️ SSL证书将在 $days_until_expiry 天后过期"
+              else
+                echo "✅ SSL证书有效期充足 ($days_until_expiry 天)"
+              fi
+            else
+              echo "❌ 无法获取SSL证书信息"
+            fi
+          else
+            echo "⚠️ 网站未使用HTTPS"
+          fi
+
+  # 服务器资源检查
+  server-resource-check:
+    name: 服务器资源检查
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.check_type == 'full'
+    
+    strategy:
+      matrix:
+        environment: [production]
+        # 如果有staging环境，可以添加: [production, staging]
+    
+    steps:
+      - name: 服务器资源监控
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ matrix.environment == 'production' && secrets.PROD_SERVER_HOST || secrets.STAGING_SERVER_HOST }}
+          username: ${{ matrix.environment == 'production' && secrets.PROD_SERVER_USER || secrets.STAGING_SERVER_USER }}
+          key: ${{ matrix.environment == 'production' && secrets.PROD_SERVER_SSH_KEY || secrets.STAGING_SERVER_SSH_KEY }}
+          port: ${{ matrix.environment == 'production' && secrets.PROD_SERVER_PORT || secrets.STAGING_SERVER_PORT || 22 }}
+          script: |
+            echo "📊 服务器资源检查 - ${{ matrix.environment }}"
+            
+            # 检查CPU使用率
+            cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | sed 's/%us,//')
+            echo "CPU使用率: ${cpu_usage}%"
+            
+            # 检查内存使用率
+            memory_info=$(free -m)
+            memory_usage=$(echo "$memory_info" | awk 'NR==2{printf "%.2f", $3*100/$2}')
+            echo "内存使用率: ${memory_usage}%"
+            echo "内存详情:"
+            echo "$memory_info"
+            
+            # 检查磁盘使用率
+            echo "磁盘使用情况:"
+            df -h
+            
+            # 检查系统负载
+            echo "系统负载:"
+            uptime
+            
+            # 检查Docker容器状态
+            echo "Docker容器状态:"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            
+            # 检查Docker资源使用
+            echo "Docker资源使用:"
+            docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}"
+            
+            # 检查网络连接
+            echo "网络连接统计:"
+            netstat -tuln | grep -E ":80|:443|:3005" || echo "未找到相关端口监听"
+
+  # 生成监控报告
+  monitoring-report:
+    name: 生成监控报告
+    runs-on: ubuntu-latest
+    needs: [basic-health-check, performance-check, security-check, server-resource-check]
+    if: always()
+    
+    steps:
+      - name: 收集检查结果
+        run: |
+          echo "📊 **健康检查和监控报告**" > monitoring_report.md
+          echo "" >> monitoring_report.md
+          echo "**检查时间**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> monitoring_report.md
+          echo "**触发方式**: ${{ github.event_name }}" >> monitoring_report.md
+          
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "**检查环境**: ${{ inputs.environment }}" >> monitoring_report.md
+            echo "**检查类型**: ${{ inputs.check_type }}" >> monitoring_report.md
+          fi
+          
+          echo "" >> monitoring_report.md
+          echo "**检查结果**:" >> monitoring_report.md
+          
+          # 基础健康检查结果
+          if [[ "${{ needs.basic-health-check.result }}" == "success" ]]; then
+            echo "- ✅ 基础健康检查: 通过" >> monitoring_report.md
+            if [[ -n "${{ needs.basic-health-check.outputs.response-time }}" ]]; then
+              echo "  - 平均响应时间: ${{ needs.basic-health-check.outputs.response-time }}ms" >> monitoring_report.md
+            fi
+          elif [[ "${{ needs.basic-health-check.result }}" == "failure" ]]; then
+            echo "- ❌ 基础健康检查: 失败" >> monitoring_report.md
+          elif [[ "${{ needs.basic-health-check.result }}" == "skipped" ]]; then
+            echo "- ⏭️ 基础健康检查: 跳过" >> monitoring_report.md
+          fi
+          
+          # 性能检查结果
+          if [[ "${{ needs.performance-check.result }}" == "success" ]]; then
+            echo "- ✅ 性能检查: 通过" >> monitoring_report.md
+          elif [[ "${{ needs.performance-check.result }}" == "failure" ]]; then
+            echo "- ❌ 性能检查: 失败" >> monitoring_report.md
+          elif [[ "${{ needs.performance-check.result }}" == "skipped" ]]; then
+            echo "- ⏭️ 性能检查: 跳过" >> monitoring_report.md
+          fi
+          
+          # 安全检查结果
+          if [[ "${{ needs.security-check.result }}" == "success" ]]; then
+            echo "- ✅ 安全检查: 通过" >> monitoring_report.md
+          elif [[ "${{ needs.security-check.result }}" == "failure" ]]; then
+            echo "- ❌ 安全检查: 失败" >> monitoring_report.md
+          elif [[ "${{ needs.security-check.result }}" == "skipped" ]]; then
+            echo "- ⏭️ 安全检查: 跳过" >> monitoring_report.md
+          fi
+          
+          # 服务器资源检查结果
+          if [[ "${{ needs.server-resource-check.result }}" == "success" ]]; then
+            echo "- ✅ 服务器资源检查: 通过" >> monitoring_report.md
+          elif [[ "${{ needs.server-resource-check.result }}" == "failure" ]]; then
+            echo "- ❌ 服务器资源检查: 失败" >> monitoring_report.md
+          elif [[ "${{ needs.server-resource-check.result }}" == "skipped" ]]; then
+            echo "- ⏭️ 服务器资源检查: 跳过" >> monitoring_report.md
+          fi
+          
+          echo "" >> monitoring_report.md
+          echo "**查看详情**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> monitoring_report.md
+          
+          # 输出报告
+          cat monitoring_report.md
+      
+      - name: 发送告警通知
+        if: needs.basic-health-check.result == 'failure'
+        run: |
+          # 服务异常时发送告警
+          ALERT_MESSAGE="🚨 **服务异常告警**
+          
+          **时间**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          **环境**: ${{ inputs.environment || 'production' }}
+          **状态**: 服务不可用
+          **检查结果**: 基础健康检查失败
+          
+          **紧急处理**:
+          1. 检查服务器状态
+          2. 查看应用日志
+          3. 必要时执行回滚
+          
+          **查看详情**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          echo "告警通知: $ALERT_MESSAGE"
+          
+          # 这里可以集成实际的告警服务
+          # curl -X POST -H 'Content-Type: application/json' \
+          #   -d "{\"text\": \"$ALERT_MESSAGE\"}" \
+          #   "${{ secrets.ALERT_WEBHOOK_URL }}"

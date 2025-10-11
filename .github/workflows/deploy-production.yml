@@ -1,0 +1,351 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '部署版本标签'
+        required: true
+        default: 'latest'
+
+env:
+  NODE_ENV: production
+  ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+  ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    name: 安全扫描
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 运行安全扫描
+      uses: securecodewarrior/github-action-add-sarif@v1
+      with:
+        sarif-file: 'security-scan-results.sarif'
+        
+    - name: 依赖安全检查
+      run: |
+        npm audit --audit-level high
+        npm run security-check || true
+
+  test:
+    runs-on: ubuntu-latest
+    name: 完整测试套件
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 安装依赖
+      run: npm ci
+      
+    - name: 运行代码检查
+      run: |
+        npm run lint
+        npm run type-check
+        
+    - name: 运行单元测试
+      run: npm run test:run -- --coverage
+      
+    - name: 运行集成测试
+      run: npm run test:integration
+      
+    - name: 构建应用
+      run: npm run build
+      
+    - name: 上传测试覆盖率
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+
+  build:
+    needs: [security-scan, test]
+    runs-on: ubuntu-latest
+    name: 构建生产镜像
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 登录阿里云ACR
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ secrets.ACR_REGISTRY }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+        
+    - name: 提取元数据
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: |
+          ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend
+          ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-api
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: 构建前端镜像
+      id: build-frontend
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend:${{ github.sha }}
+          ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend:latest
+        build-args: |
+          NODE_ENV=production
+          VITE_API_URL=${{ secrets.PROD_API_URL }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: 构建API镜像
+      id: build-api
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.api
+        push: true
+        tags: |
+          ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-api:${{ github.sha }}
+          ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-api:latest
+        build-args: |
+          NODE_ENV=production
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: 镜像安全扫描
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: 上传扫描结果
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    name: 部署到预发布环境
+    environment: staging
+    
+    steps:
+    - name: 部署到预发布服务器
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.STAGING_SERVER_HOST }}
+        username: ${{ secrets.STAGING_SERVER_USER }}
+        key: ${{ secrets.STAGING_SERVER_SSH_KEY }}
+        port: ${{ secrets.STAGING_SERVER_PORT }}
+        script: |
+          # 设置环境变量
+          export ACR_REGISTRY="${{ secrets.ACR_REGISTRY }}"
+          export ACR_NAMESPACE="${{ secrets.ACR_NAMESPACE }}"
+          export IMAGE_TAG="${{ github.sha }}"
+          export DB_HOST="${{ secrets.STAGING_DB_HOST }}"
+          export DB_USER="${{ secrets.STAGING_DB_USER }}"
+          export DB_PASSWORD="${{ secrets.STAGING_DB_PASSWORD }}"
+          export DB_NAME="${{ secrets.STAGING_DB_NAME }}"
+          
+          # 登录ACR
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+          
+          # 拉取最新镜像
+          docker pull ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend:${{ github.sha }}
+          docker pull ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-api:${{ github.sha }}
+          
+          # 停止旧容器
+          docker-compose -f docker-compose.staging.yml down || true
+          
+          # 启动新容器
+          docker-compose -f docker-compose.staging.yml up -d
+          
+          # 健康检查
+          sleep 30
+          curl -f https://staging.your-domain.com/health || exit 1
+          
+    - name: 运行冒烟测试
+      run: |
+        # 运行基本的冒烟测试
+        npm run test:smoke -- --baseUrl=https://staging.your-domain.com
+
+  deploy-production:
+    needs: [build, deploy-staging]
+    runs-on: ubuntu-latest
+    name: 部署到生产环境
+    environment: production
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: 人工审批检查
+      uses: trstringer/manual-approval@v1
+      with:
+        secret: ${{ github.TOKEN }}
+        approvers: admin1,admin2
+        minimum-approvals: 2
+        issue-title: "生产环境部署审批"
+        issue-body: |
+          请审批生产环境部署:
+          - 提交: ${{ github.sha }}
+          - 分支: ${{ github.ref }}
+          - 作者: ${{ github.actor }}
+          
+    - name: 备份当前生产环境
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          # 创建备份
+          mkdir -p /backup/$(date +%Y%m%d-%H%M%S)
+          docker-compose -f docker-compose.prod.yml config > /backup/$(date +%Y%m%d-%H%M%S)/docker-compose.yml
+          docker images --format "table {{.Repository}}:{{.Tag}}" | grep guessing-pen > /backup/$(date +%Y%m%d-%H%M%S)/images.txt
+          
+    - name: 部署到生产服务器
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          # 设置环境变量
+          export ACR_REGISTRY="${{ secrets.ACR_REGISTRY }}"
+          export ACR_NAMESPACE="${{ secrets.ACR_NAMESPACE }}"
+          export IMAGE_TAG="${{ github.sha }}"
+          export DB_HOST="${{ secrets.DB_HOST }}"
+          export DB_USER="${{ secrets.DB_USER }}"
+          export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+          export DB_NAME="${{ secrets.DB_NAME }}"
+          
+          # 登录ACR
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+          
+          # 拉取最新镜像
+          docker pull ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend:${{ github.sha }}
+          docker pull ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-api:${{ github.sha }}
+          
+          # 滚动更新
+          docker-compose -f docker-compose.prod.yml up -d --no-deps frontend
+          sleep 15
+          docker-compose -f docker-compose.prod.yml up -d --no-deps api
+          
+          # 健康检查
+          sleep 30
+          curl -f https://your-domain.com/health || exit 1
+          
+          # 清理旧镜像
+          docker image prune -f
+          
+    - name: 验证部署
+      run: |
+        # 运行生产环境验证测试
+        npm run test:production -- --baseUrl=https://your-domain.com
+        
+    - name: 更新latest标签
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          # 标记成功部署的镜像为latest
+          docker tag ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend:${{ github.sha }} ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend:latest
+          docker tag ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-api:${{ github.sha }} ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-api:latest
+          
+          # 推送latest标签
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-frontend:latest
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/guessing-pen-api:latest
+
+  notify:
+    needs: [deploy-production]
+    runs-on: ubuntu-latest
+    name: 发送部署通知
+    if: always()
+    
+    steps:
+    - name: 发送Slack通知
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#production-deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+        custom_payload: |
+          {
+            "text": "生产环境部署 ${{ job.status }}",
+            "attachments": [{
+              "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+              "fields": [{
+                "title": "项目",
+                "value": "${{ github.repository }}",
+                "short": true
+              }, {
+                "title": "环境",
+                "value": "生产环境",
+                "short": true
+              }, {
+                "title": "提交",
+                "value": "${{ github.sha }}",
+                "short": true
+              }, {
+                "title": "作者",
+                "value": "${{ github.actor }}",
+                "short": true
+              }]
+            }]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        
+    - name: 发送邮件通知
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 587
+        username: ${{ secrets.EMAIL_USERNAME }}
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: "生产环境部署 ${{ job.status }} - ${{ github.repository }}"
+        to: ${{ secrets.EMAIL_NOTIFICATION }}
+        from: DevOps Team
+        body: |
+          生产环境部署状态: ${{ job.status }}
+          
+          项目: ${{ github.repository }}
+          提交: ${{ github.sha }}
+          作者: ${{ github.actor }}
+          时间: ${{ github.event.head_commit.timestamp }}
+          
+          查看详情: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
