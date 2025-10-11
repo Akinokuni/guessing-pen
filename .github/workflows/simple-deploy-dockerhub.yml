@@ -1,0 +1,104 @@
+name: 简化部署流程 (Docker Hub)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Docker Hub配置
+  DOCKER_REGISTRY: docker.io
+  DOCKER_NAMESPACE: your-dockerhub-username
+  
+  # 镜像名称
+  FRONTEND_IMAGE: guessing-pen-frontend
+  API_IMAGE: guessing-pen-api
+  
+  # Node.js版本
+  NODE_VERSION: '18'
+
+jobs:
+  # 代码质量检查和测试
+  test:
+    name: 代码检查和测试
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 设置Node.js环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: 安装依赖
+        run: npm ci
+      
+      - name: 代码格式检查
+        run: npm run lint
+        continue-on-error: false
+      
+      - name: TypeScript类型检查
+        run: npm run type-check
+        continue-on-error: false
+      
+      - name: 构建应用
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+  # Docker镜像构建和推送
+  build-and-push:
+    name: 构建并推送镜像
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: 登录Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: 生成镜像标签
+        id: meta
+        run: |
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          
+          FRONTEND_IMAGE_FULL="${{ env.DOCKER_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}"
+          
+          echo "frontend-image=$FRONTEND_IMAGE_FULL" >> $GITHUB_OUTPUT
+          echo "git-commit=$GIT_COMMIT" >> $GITHUB_OUTPUT
+          echo "build-date=$BUILD_DATE" >> $GITHUB_OUTPUT
+      
+      - name: 构建并推送前端镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.frontend-image }}:latest
+            ${{ steps.meta.outputs.frontend-image }}:${{ steps.meta.outputs.git-commit }}
+          build-args: |
+            BUILD_DATE=${{ steps.meta.outputs.build-date }}
+            GIT_COMMIT=${{ steps.meta.outputs.git-commit }}
+            NODE_ENV=production
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: 输出镜像信息
+        run: |
+          echo "🎉 镜像构建完成！"
+          echo "前端镜像: ${{ steps.meta.outputs.frontend-image }}:latest"
+          echo "Git提交: ${{ steps.meta.outputs.git-commit }}"
