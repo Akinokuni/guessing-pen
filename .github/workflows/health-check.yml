@@ -3,7 +3,7 @@ name: 健康检查和监控
 on:
   # 每15分钟执行一次健康检查
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/150 * * * *'
   
   # 手动触发
   workflow_dispatch:
