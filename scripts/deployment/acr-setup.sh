@@ -23,7 +23,7 @@ readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
 
 # 阿里云ACR配置
-readonly DEFAULT_REGISTRY="registry.cn-hangzhou.aliyuncs.com"
+readonly DEFAULT_REGISTRY="crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com"
 readonly DEFAULT_NAMESPACE="guessing-pen"
 
 #==============================================================================

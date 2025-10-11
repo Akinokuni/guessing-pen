@@ -9,7 +9,7 @@ on:
 
 env:
   # 阿里云ACR配置
-  ACR_REGISTRY: registry.cn-hangzhou.aliyuncs.com
+  ACR_REGISTRY: crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
   ACR_NAMESPACE: guessing-pen
   
   # 镜像名称

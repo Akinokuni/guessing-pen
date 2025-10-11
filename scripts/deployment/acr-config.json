@@ -1,7 +1,7 @@
 {
   "registry": {
-    "url": "registry.cn-hangzhou.aliyuncs.com",
-    "region": "cn-hangzhou",
+    "url": "crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com",
+    "region": "cn-shenzhen",
     "namespace": "guessing-pen",
     "description": "旮旯画师项目镜像仓库",
     "type": "PERSONAL",

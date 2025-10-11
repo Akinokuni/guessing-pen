@@ -57,16 +57,17 @@
 
 #### 2.1 ACR基本信息
 ```bash
-注册表地址: registry.cn-hangzhou.aliyuncs.com
-地域: 华东1 (杭州)
+注册表地址: crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
+地域: 华南1 (深圳)
 命名空间: guessing-pen
 版本: 个人版
+用户名: qgl233
 ```
 
 #### 2.2 镜像地址
 ```bash
-前端镜像: registry.cn-hangzhou.aliyuncs.com/guessing-pen/guessing-pen-frontend
-API镜像: registry.cn-hangzhou.aliyuncs.com/guessing-pen/guessing-pen-api
+前端镜像: crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/guessing-pen-frontend
+API镜像: crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/guessing-pen-api
 ```
 
 ## GitHub Actions配置
@@ -76,9 +77,9 @@ API镜像: registry.cn-hangzhou.aliyuncs.com/guessing-pen/guessing-pen-api
 在GitHub仓库的Settings > Secrets and variables > Actions中添加以下Secrets：
 
 ```bash
-ACR_REGISTRY=registry.cn-hangzhou.aliyuncs.com
+ACR_REGISTRY=crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
 ACR_NAMESPACE=guessing-pen
-ACR_USERNAME=<你的阿里云ACR用户名>
+ACR_USERNAME=qgl233
 ACR_PASSWORD=<你的阿里云ACR密码>
 ```
 
@@ -107,10 +108,10 @@ jobs:
 ### 1. Docker登录
 ```bash
 # 使用环境变量登录
-echo "$ACR_PASSWORD" | docker login registry.cn-hangzhou.aliyuncs.com -u "$ACR_USERNAME" --password-stdin
+echo "$ACR_PASSWORD" | docker login crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com -u "$ACR_USERNAME" --password-stdin
 
 # 或者交互式登录
-docker login registry.cn-hangzhou.aliyuncs.com
+docker login crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
 ```
 
 ### 2. 构建和推送镜像
@@ -119,8 +120,8 @@ docker login registry.cn-hangzhou.aliyuncs.com
 bash scripts/deployment/acr-push.sh
 
 # 或者手动构建推送
-docker build -t registry.cn-hangzhou.aliyuncs.com/guessing-pen/guessing-pen-frontend:latest .
-docker push registry.cn-hangzhou.aliyuncs.com/guessing-pen/guessing-pen-frontend:latest
+docker build -t crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/guessing-pen-frontend:latest .
+docker push crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/guessing-pen-frontend:latest
 ```
 
 ## 验证配置
@@ -128,9 +129,9 @@ docker push registry.cn-hangzhou.aliyuncs.com/guessing-pen/guessing-pen-frontend
 ### 1. 使用验证脚本
 ```bash
 # 设置环境变量
-export ACR_REGISTRY="registry.cn-hangzhou.aliyuncs.com"
+export ACR_REGISTRY="crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com"
 export ACR_NAMESPACE="guessing-pen"
-export ACR_USERNAME="your-username"
+export ACR_USERNAME="qgl233"
 export ACR_PASSWORD="your-password"
 
 # 运行验证脚本
@@ -140,17 +141,17 @@ bash scripts/deployment/acr-config-validator.sh
 ### 2. 手动验证
 ```bash
 # 测试登录
-docker login registry.cn-hangzhou.aliyuncs.com
+docker login crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
 
 # 拉取测试镜像
 docker pull hello-world:latest
 
 # 标记并推送到ACR
-docker tag hello-world:latest registry.cn-hangzhou.aliyuncs.com/guessing-pen/test:latest
-docker push registry.cn-hangzhou.aliyuncs.com/guessing-pen/test:latest
+docker tag hello-world:latest crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/test:latest
+docker push crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/test:latest
 
 # 清理测试镜像
-docker rmi registry.cn-hangzhou.aliyuncs.com/guessing-pen/test:latest
+docker rmi crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/test:latest
 ```
 
 ## 故障排查

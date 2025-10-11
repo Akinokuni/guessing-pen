@@ -8,16 +8,16 @@
 
 ### 阿里云ACR相关
 ```
-ACR_REGISTRY=registry.cn-hangzhou.aliyuncs.com
+ACR_REGISTRY=crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
 ACR_NAMESPACE=guessing-pen
-ACR_USERNAME=your-acr-username
+ACR_USERNAME=qgl233
 ACR_PASSWORD=your-acr-password
 ```
 
 **重要说明**:
-- `ACR_REGISTRY`: 固定为 `registry.cn-hangzhou.aliyuncs.com`
+- `ACR_REGISTRY`: 你的个人ACR实例地址
 - `ACR_NAMESPACE`: 你的ACR命名空间，通常是项目名称
-- `ACR_USERNAME`: 阿里云ACR用户名（建议使用RAM用户）
+- `ACR_USERNAME`: 阿里云ACR用户名 (qgl233)
 - `ACR_PASSWORD`: 阿里云ACR密码（建议使用访问凭证而非主账号密码）
 
 ### 服务器SSH连接
