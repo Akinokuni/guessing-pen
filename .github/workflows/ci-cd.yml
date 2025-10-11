@@ -39,7 +39,9 @@ jobs:
       
       - name: 安装依赖
         run: |
-          npm ci
+          npm ci --include=dev
+        env:
+          NODE_ENV: development
       
       # 临时跳过ESLint检查
       # - name: 代码格式检查
