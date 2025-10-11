@@ -1,9 +1,9 @@
 name: 健康检查和监控
 
 on:
-  # 暂时禁用定时健康检查，直到配置生产环境
-  # schedule:
-  #   - cron: '*/15 * * * *'
+  # 每15分钟执行一次健康检查
+  schedule:
+    - cron: '*/15 * * * *'
   
   # 手动触发
   workflow_dispatch:
