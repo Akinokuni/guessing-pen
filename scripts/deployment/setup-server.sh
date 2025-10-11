@@ -148,7 +148,8 @@ services:
     environment:
       - NODE_ENV=production
       - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT:-3306}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_SSL=${DB_SSL:-false}
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
@@ -180,16 +181,16 @@ setup_env_file() {
     log_info "创建环境变量文件..."
     
     cat > "${PROJECT_DIR}/.env" << 'EOF'
-# 数据库配置
-DB_HOST=rm-wz9p6u2i5yz4uh5ue.mysql.rds.aliyuncs.com
-DB_PORT=3306
-DB_NAME=guessing_pen
-DB_USER=guessing_pen_user
-DB_PASSWORD=your_password_here
+# PostgreSQL数据库配置
+DB_HOST=pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=aki
+DB_PASSWORD=20138990398QGL@gmailcom
 
 # ACR配置
 ACR_REGISTRY=crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
-ACR_NAMESPACE=akinokuni
+ACR_NAMESPACE=guessing-pen
 ACR_USERNAME=your_username_here
 ACR_PASSWORD=your_password_here
 EOF

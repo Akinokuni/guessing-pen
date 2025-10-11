@@ -1,0 +1,114 @@
+# ========================================
+# 服务器部署命令 - 直接复制粘贴执行
+# 服务器: 47.115.146.78
+# ========================================
+
+# 1. 创建项目目录
+mkdir -p /opt/guessing-pen/logs
+cd /opt/guessing-pen
+
+# 2. 创建docker-compose.yml
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+  app:
+    image: crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/guessing-pen-frontend:latest
+    container_name: guessing-pen-app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com
+      - DB_PORT=5432
+      - DB_NAME=postgres
+      - DB_USER=aki
+      - DB_PASSWORD=20138990398QGL@gmailcom
+      - DB_SSL=false
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - guessing-pen-network
+
+networks:
+  guessing-pen-network:
+    driver: bridge
+EOF
+
+# 3. 创建.env文件（包含ACR凭证）
+cat > .env << 'EOF'
+# PostgreSQL数据库配置
+DB_HOST=pgm-wz9z6i202l2p25wvco.pg.rds.aliyuncs.com
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=aki
+DB_PASSWORD=20138990398QGL@gmailcom
+
+# ACR配置 - 需要填写你的凭证
+ACR_REGISTRY=crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
+ACR_NAMESPACE=guessing-pen
+ACR_USERNAME=你的ACR用户名
+ACR_PASSWORD=你的ACR密码
+EOF
+
+chmod 600 .env
+
+# 4. 编辑.env文件，填入ACR凭证
+nano .env
+
+# 5. 登录ACR（执行前确保已填写ACR凭证）
+source .env
+echo $ACR_PASSWORD | docker login $ACR_REGISTRY -u $ACR_USERNAME --password-stdin
+
+# 6. 拉取镜像
+docker pull crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com/guessing-pen/guessing-pen-frontend:latest
+
+# 7. 启动服务
+docker compose up -d
+
+# 8. 查看容器状态
+docker ps
+
+# 9. 查看日志
+docker logs guessing-pen-app
+
+# 10. 测试健康检查
+curl http://localhost:3000/api/health
+
+# ========================================
+# 常用管理命令
+# ========================================
+
+# 查看实时日志
+docker logs -f guessing-pen-app
+
+# 重启服务
+docker compose restart
+
+# 停止服务
+docker compose down
+
+# 更新服务
+docker compose pull && docker compose up -d
+
+# 清理旧镜像
+docker image prune -f
+
+# ========================================
+# 访问地址
+# ========================================
+# 应用: http://47.115.146.78:3000
+# 健康检查: http://47.115.146.78:3000/api/health
