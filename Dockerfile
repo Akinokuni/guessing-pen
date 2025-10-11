@@ -44,15 +44,10 @@ RUN apk add --no-cache \
     g++ \
     && rm -rf /var/cache/apk/*
 
-# 复制package文件（利用Docker缓存层）
-COPY package*.json ./
+# 复制package文件和npm配置（利用Docker缓存层）
+COPY package*.json .npmrc ./
 
-# 配置npm（使用国内镜像源）
-RUN npm config set registry https://registry.npmmirror.com \
-    && npm config set disturl https://npmmirror.com/dist \
-    && npm config set sass_binary_site https://npmmirror.com/mirrors/node-sass
-
-# 安装依赖（包括开发依赖用于构建）
+# 安装依赖
 RUN npm ci --frozen-lockfile --no-audit --no-fund
 
 # 复制源代码

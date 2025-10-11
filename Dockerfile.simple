@@ -1,0 +1,61 @@
+# 简化版前端应用 Dockerfile
+# 专注于基本功能，减少复杂配置
+
+# ================================
+# 构建阶段 - 编译前端应用
+# ================================
+FROM node:18-alpine AS builder
+
+# 设置构建参数
+ARG BUILD_DATE
+ARG VERSION=latest
+ARG GIT_COMMIT=unknown
+ARG NODE_ENV=production
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制package文件
+COPY package*.json ./
+
+# 安装依赖
+RUN npm ci --frozen-lockfile
+
+# 复制源代码
+COPY . .
+
+# 构建应用
+RUN npm run build
+
+# ================================
+# 生产阶段 - Nginx服务器
+# ================================
+FROM nginx:1.25-alpine AS production
+
+# 设置构建参数
+ARG BUILD_DATE
+ARG VERSION=latest
+ARG GIT_COMMIT=unknown
+
+# 添加标签信息
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_COMMIT}" \
+      org.opencontainers.image.title="旮旯画师前端应用" \
+      org.opencontainers.image.description="AI艺术鉴别游戏前端应用"
+
+# 复制Nginx配置
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# 复制构建产物
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 暴露端口
+EXPOSE 80
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# 启动命令
+CMD ["nginx", "-g", "daemon off;"]

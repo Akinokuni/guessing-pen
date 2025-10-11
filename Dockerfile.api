@@ -56,12 +56,8 @@ RUN addgroup -g 1001 -S nodejs \
 # ================================
 FROM base AS dependencies
 
-# 复制package文件
-COPY package*.json ./
-
-# 配置npm
-RUN npm config set registry https://registry.npmmirror.com \
-    && npm config set disturl https://npmmirror.com/dist
+# 复制package文件和npm配置
+COPY package*.json .npmrc ./
 
 # 安装生产依赖
 RUN npm ci --only=production --frozen-lockfile --no-audit --no-fund \
