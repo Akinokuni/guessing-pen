@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "build:skip-check": "vite build",
     "build:docker": "vite build --mode production",
+    "build:ci": "npx tsc --noEmit && npx vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 50",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "lint:ci": "npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 50",
