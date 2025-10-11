@@ -39,17 +39,17 @@ jobs:
         env:
           NODE_ENV: development
       
-      - name: 验证ESLint安装
+      - name: 验证开发工具
         run: |
-          echo "检查ESLint是否可用..."
-          npx eslint --version || echo "ESLint未找到，尝试重新安装..."
-          if ! command -v eslint &> /dev/null; then
-            echo "直接安装ESLint..."
-            npm install eslint --no-save
-          fi
+          echo "验证ESLint和TypeScript..."
+          npx eslint --version
+          npx tsc --version
+          echo "工具验证完成"
       
       - name: 代码格式检查
-        run: npm run lint:ci
+        run: |
+          echo "运行ESLint检查..."
+          npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 50
         continue-on-error: false
       
       - name: TypeScript类型检查
