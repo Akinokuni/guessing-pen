@@ -10,6 +10,8 @@
     "build:skip-check": "vite build",
     "build:docker": "vite build --mode production",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 50",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "lint:ci": "npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 50",
     "type-check": "tsc --noEmit",
     "test": "echo \"No tests specified\" && exit 0",
     "test:unit": "echo \"No unit tests specified\" && exit 0",
