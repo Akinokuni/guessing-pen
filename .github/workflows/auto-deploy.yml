@@ -1,0 +1,208 @@
+name: 自动部署到服务器
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  ACR_REGISTRY: crpi-1dj58zvwo0jdkh2y.cn-shenzhen.personal.cr.aliyuncs.com
+  ACR_NAMESPACE: guessing-pen
+  IMAGE_NAME: guessing-pen-frontend
+  NODE_VERSION: '18'
+  SERVER_HOST: 47.115.146.78
+
+jobs:
+  # 构建和推送镜像
+  build-and-push:
+    name: 构建并推送镜像
+    runs-on: ubuntu-latest
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.git-commit }}
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 设置Node.js环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: 安装依赖
+        run: npm ci --include=dev
+        env:
+          NODE_ENV: development
+      
+      - name: TypeScript类型检查
+        run: npx tsc --noEmit
+        continue-on-error: false
+      
+      - name: 构建应用
+        run: npm run build:ci
+        env:
+          NODE_ENV: production
+      
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: 登录阿里云ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      
+      - name: 生成镜像标签
+        id: meta
+        run: |
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          
+          IMAGE_FULL="${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}"
+          
+          echo "image=$IMAGE_FULL" >> $GITHUB_OUTPUT
+          echo "git-commit=$GIT_COMMIT" >> $GITHUB_OUTPUT
+          echo "build-date=$BUILD_DATE" >> $GITHUB_OUTPUT
+      
+      - name: 构建并推送镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.git-commit }}
+          build-args: |
+            BUILD_DATE=${{ steps.meta.outputs.build-date }}
+            GIT_COMMIT=${{ steps.meta.outputs.git-commit }}
+            NODE_ENV=production
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: 输出镜像信息
+        run: |
+          echo "🎉 镜像构建完成！"
+          echo "镜像: ${{ steps.meta.outputs.image }}:latest"
+          echo "Git提交: ${{ steps.meta.outputs.git-commit }}"
+
+  # 部署到服务器
+  deploy:
+    name: 部署到服务器
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 部署到服务器
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_SERVER_HOST }}
+          username: ${{ secrets.PROD_SERVER_USER }}
+          key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            
+            echo "🚀 开始部署到 ${{ env.SERVER_HOST }}..."
+            
+            # 进入项目目录
+            cd /opt/guessing-pen || { echo "❌ 项目目录不存在"; exit 1; }
+            
+            # 登录ACR
+            echo "🔑 登录阿里云ACR..."
+            echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.ACR_REGISTRY }} -u "${{ secrets.ACR_USERNAME }}" --password-stdin
+            
+            # 拉取最新镜像
+            echo "📦 拉取最新镜像..."
+            docker pull ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
+            
+            # 停止旧容器
+            echo "⏹️ 停止旧容器..."
+            docker compose down || true
+            
+            # 启动新容器
+            echo "▶️ 启动新容器..."
+            docker compose up -d
+            
+            # 等待服务启动
+            echo "⏳ 等待服务启动..."
+            sleep 15
+            
+            # 检查容器状态
+            if docker compose ps | grep -q "Up"; then
+              echo "✅ 部署成功！服务正在运行"
+              
+              # 显示容器状态
+              docker compose ps
+              
+              # 清理旧镜像
+              echo "🧹 清理旧镜像..."
+              docker image prune -f
+            else
+              echo "❌ 部署失败，请检查容器状态"
+              docker compose ps
+              docker compose logs --tail=50
+              exit 1
+            fi
+            
+            echo "🎉 部署完成！"
+      
+      - name: 健康检查
+        run: |
+          echo "🔍 执行健康检查..."
+          
+          # 等待服务完全启动
+          sleep 10
+          
+          # 检查服务是否响应
+          if curl -f -s -o /dev/null -w "%{http_code}" http://${{ env.SERVER_HOST }}:3000/api/health | grep -q "200"; then
+            echo "✅ 健康检查通过"
+          else
+            echo "⚠️ 健康检查失败，但部署已完成"
+            echo "请手动检查: http://${{ env.SERVER_HOST }}:3000"
+          fi
+
+  # 部署通知
+  notify:
+    name: 部署通知
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: 生成部署报告
+        run: |
+          echo "📊 部署报告"
+          echo "=========="
+          echo ""
+          
+          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+            STATUS="✅ 成功"
+          elif [[ "${{ needs.deploy.result }}" == "skipped" ]]; then
+            STATUS="⏭️ 跳过"
+          else
+            STATUS="❌ 失败"
+          fi
+          
+          echo "**状态**: ${STATUS}"
+          echo "**分支**: ${{ github.ref_name }}"
+          echo "**提交**: ${{ github.sha }}"
+          echo "**触发者**: ${{ github.actor }}"
+          echo "**时间**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+          echo "**镜像**: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:latest"
+          echo "**服务器**: http://${{ env.SERVER_HOST }}:3000"
+          echo ""
+          echo "**查看详情**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+# 工作流级别的环境变量和配置
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
