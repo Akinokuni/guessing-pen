@@ -25,20 +25,20 @@ const GAME_CONFIG = {
   ]
 }
 
-// 验证三元组是否符合规则
-const _validateTriple = (a: number, b: number, c: number): boolean => {
-  const TARGET = 2025
-  const LOW = 662
-  const HIGH = 688
-  
-  // 检查范围
-  if (a < LOW || a > HIGH || b < LOW || b > HIGH || c < LOW || c > HIGH) {
-    return false
-  }
-  
-  // 检查和是否为2025
-  return a + b + c === TARGET
-}
+// 验证三元组是否符合规则（保留以备将来使用）
+// const validateTriple = (a: number, b: number, c: number): boolean => {
+//   const TARGET = 2025
+//   const LOW = 662
+//   const HIGH = 688
+//   
+//   // 检查范围
+//   if (a < LOW || a > HIGH || b < LOW || b > HIGH || c < LOW || c > HIGH) {
+//     return false
+//   }
+//   
+//   // 检查和是否为2025
+//   return a + b + c === TARGET
+// }
 
 // 计分算法 - 根据新的计分规则
 const calculateScore = (submission: SubmissionPayload, userNickname: string): ApiResponse => {

@@ -54,7 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
     } else if (req.method === 'POST') {
       // 提交新的分数到排行榜
-      const { nickname, score, combinations: _combinations } = req.body
+      const { nickname, score, combinations } = req.body
       
       if (!nickname || typeof score !== 'number') {
         res.status(400).json({ error: 'Invalid data' })
@@ -62,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       // 在实际项目中，这里应该保存到数据库
-      console.log(`New leaderboard entry: ${nickname} - ${score} points`)
+      console.log(`New leaderboard entry: ${nickname} - ${score} points (${combinations} combinations)`)
       
       // 计算排名（简单实现）
       const rank = MOCK_LEADERBOARD.filter(entry => entry.score > score).length + 1

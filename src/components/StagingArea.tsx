@@ -8,6 +8,59 @@ interface StagingAreaProps {
   className?: string
 }
 
+// 卡片槽位组件
+const CardSlot: React.FC<{
+  index: number
+  card?: Card
+  aiMarkedCardId: string | null
+  onAiToggle: (cardId: string) => void
+  onCardClick: (card: Card) => void
+}> = ({ index, card, aiMarkedCardId, onAiToggle, onCardClick }) => (
+  <div
+    className={`w-[120px] sm:w-[150px] h-[80px] sm:h-[100px] rounded-lg border-2 border-dashed flex items-center justify-center flex-shrink-0 ${
+      card 
+        ? 'border-transparent' 
+        : 'border-gray-300 bg-gray-50'
+    }`}
+  >
+    {card ? (
+      <DesignCard
+        card={card}
+        selected={true}
+        aiMarked={aiMarkedCardId === card.id}
+        onAiToggle={onAiToggle}
+        onClick={onCardClick}
+      />
+    ) : (
+      <div className="text-gray-400 text-center">
+        <div className="text-2xl mb-1">📋</div>
+        <div className="text-xs">槽位 {index + 1}</div>
+      </div>
+    )}
+  </div>
+)
+
+// AI标记说明组件
+const AiMarkingInfo: React.FC<{
+  selectedCards: Card[]
+  aiMarkedCardId: string | null
+}> = ({ selectedCards, aiMarkedCardId }) => {
+  if (selectedCards.length === 0) return null
+  
+  return (
+    <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+      <p className="text-sm text-yellow-800">
+        💡 点击卡片右上角的 "AI" 按钮来标记你认为是 AI 生成的卡片
+      </p>
+      {aiMarkedCardId && (
+        <p className="text-xs text-yellow-700 mt-1">
+          已标记: {selectedCards.find(c => c.id === aiMarkedCardId)?.name || aiMarkedCardId}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export const StagingArea: React.FC<StagingAreaProps> = ({ className = '' }) => {
   const { 
     selectedCards, 
@@ -57,50 +110,23 @@ export const StagingArea: React.FC<StagingAreaProps> = ({ className = '' }) => {
 
       {/* 构建区卡片槽位 */}
       <div className="flex justify-center gap-2 sm:gap-4 mb-4 sm:mb-6 overflow-x-auto pb-2">
-        {[0, 1, 2].map((index) => {
-          const card = selectedCards[index]
-          
-          return (
-            <div
-              key={index}
-              className={`w-[120px] sm:w-[150px] h-[80px] sm:h-[100px] rounded-lg border-2 border-dashed flex items-center justify-center flex-shrink-0 ${
-                card 
-                  ? 'border-transparent' 
-                  : 'border-gray-300 bg-gray-50'
-              }`}
-            >
-              {card ? (
-                <DesignCard
-                  card={card}
-                  selected={true}
-                  aiMarked={aiMarkedCardId === card.id}
-                  onAiToggle={handleAiToggle}
-                  onClick={handleCardClick}
-                />
-              ) : (
-                <div className="text-gray-400 text-center">
-                  <div className="text-2xl mb-1">📋</div>
-                  <div className="text-xs">槽位 {index + 1}</div>
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {[0, 1, 2].map((index) => (
+          <CardSlot
+            key={index}
+            index={index}
+            card={selectedCards[index]}
+            aiMarkedCardId={aiMarkedCardId}
+            onAiToggle={handleAiToggle}
+            onCardClick={handleCardClick}
+          />
+        ))}
       </div>
 
       {/* AI 标记说明 */}
-      {selectedCards.length > 0 && (
-        <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-          <p className="text-sm text-yellow-800">
-            💡 点击卡片右上角的 "AI" 按钮来标记你认为是 AI 生成的卡片
-          </p>
-          {aiMarkedCardId && (
-            <p className="text-xs text-yellow-700 mt-1">
-              已标记: {selectedCards.find(c => c.id === aiMarkedCardId)?.name || aiMarkedCardId}
-            </p>
-          )}
-        </div>
-      )}
+      <AiMarkingInfo 
+        selectedCards={selectedCards}
+        aiMarkedCardId={aiMarkedCardId}
+      />
 
       {/* 操作按钮 */}
       <div className="flex gap-3 justify-center">

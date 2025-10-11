@@ -45,40 +45,52 @@ export const storage = {
   }
 }
 
+// 定义类型接口
+interface UserInfo {
+  nickname: string
+  [key: string]: unknown
+}
+
+interface GameProgress {
+  submittedCombinations: unknown[]
+  finalScore: number | null
+  [key: string]: unknown
+}
+
 // 游戏专用的 localStorage 操作
 export const gameStorage = {
   // 用户信息
-  getUserInfo() {
-    return storage.get(STORAGE_KEYS.USER_INFO, null)
+  getUserInfo(): UserInfo | null {
+    return storage.get<UserInfo | null>(STORAGE_KEYS.USER_INFO, null)
   },
   
-  setUserInfo(userInfo: any) {
+  setUserInfo(userInfo: UserInfo): void {
     storage.set(STORAGE_KEYS.USER_INFO, userInfo)
   },
 
   // 游戏状态
-  getGameState() {
-    return storage.get(STORAGE_KEYS.GAME_STATE, 'onboarding')
+  getGameState(): string {
+    return storage.get<string>(STORAGE_KEYS.GAME_STATE, 'onboarding')
   },
   
-  setGameState(state: string) {
+  setGameState(state: string): void {
     storage.set(STORAGE_KEYS.GAME_STATE, state)
   },
 
   // 游戏进度
-  getGameProgress() {
-    return storage.get(STORAGE_KEYS.GAME_PROGRESS, {
+  getGameProgress(): GameProgress {
+    return storage.get<GameProgress>(STORAGE_KEYS.GAME_PROGRESS, {
       submittedCombinations: [],
       finalScore: null
     })
   },
   
-  setGameProgress(progress: any) {
+  setGameProgress(progress: GameProgress): void {
     storage.set(STORAGE_KEYS.GAME_PROGRESS, progress)
   },
 
   // 清空所有数据
-  clearAll() {
+  clearAll(): void {
     storage.clear()
   }
 }

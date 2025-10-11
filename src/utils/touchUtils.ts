@@ -40,13 +40,21 @@ export const addTouchFeedback = (element: HTMLElement): void => {
 
 // 优化滚动性能
 export const optimizeScrolling = (element: HTMLElement): void => {
-  (element.style as any).webkitOverflowScrolling = 'touch'
+  // 使用类型断言来处理webkit特定属性
+  const elementStyle = element.style as CSSStyleDeclaration & {
+    webkitOverflowScrolling?: string
+  }
+  elementStyle.webkitOverflowScrolling = 'touch'
   element.style.setProperty('-webkit-overflow-scrolling', 'touch')
 }
 
 // 禁用文本选择
 export const disableTextSelection = (element: HTMLElement): void => {
-  (element.style as any).webkitUserSelect = 'none'
+  // 使用类型断言来处理webkit特定属性
+  const elementStyle = element.style as CSSStyleDeclaration & {
+    webkitUserSelect?: string
+  }
+  elementStyle.webkitUserSelect = 'none'
   element.style.userSelect = 'none'
   element.style.setProperty('-webkit-touch-callout', 'none')
 }
