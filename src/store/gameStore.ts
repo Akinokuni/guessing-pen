@@ -41,7 +41,7 @@ interface GameStore {
 }
 
 // 从 localStorage 恢复状态
-const getInitialState = () => {
+const getInitialState = (): Partial<GameStore> => {
   const savedUserInfo = gameStorage.getUserInfo()
   const savedGameState = gameStorage.getGameState()
   const savedProgress = gameStorage.getGameProgress()
@@ -52,7 +52,7 @@ const getInitialState = () => {
     availableCards: [],
     selectedCards: [],
     aiMarkedCardId: null,
-    submittedCombinations: savedProgress.submittedCombinations || [],
+    submittedCombinations: (savedProgress.submittedCombinations as Combination[]) || [],
     finalScore: savedProgress.finalScore,
   }
 }
@@ -62,7 +62,7 @@ export const useGameStore = create<GameStore>()(
   subscribeWithSelector((set, get) => ({
     ...getInitialState(),
   
-  setUserInfo: (userInfo) => {
+  setUserInfo: (userInfo: UserInfo) => {
     set({ userInfo })
     gameStorage.setUserInfo(userInfo)
   },
@@ -103,6 +103,15 @@ export const useGameStore = create<GameStore>()(
   
   resetGame: () => {
     gameStorage.clearAll()
-    set(getInitialState())
+    const initialState = getInitialState()
+    set({
+      userInfo: initialState.userInfo || null,
+      gameState: initialState.gameState || GameState.ONBOARDING,
+      availableCards: initialState.availableCards || [],
+      selectedCards: initialState.selectedCards || [],
+      aiMarkedCardId: initialState.aiMarkedCardId || null,
+      submittedCombinations: initialState.submittedCombinations || [],
+      finalScore: initialState.finalScore || null,
+    })
   },
 })))

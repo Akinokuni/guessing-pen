@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button } from '../design-system'
 import { useGameStore } from '../store/gameStore'
-import { GameState } from '../types'
+import { GameState, Combination } from '../types'
 
 // 计算成绩等级的工具函数
 const getScoreGrade = (score: number) => {
@@ -15,7 +15,7 @@ const getScoreGrade = (score: number) => {
 // 分数展示组件
 const ScoreDisplay: React.FC<{ 
   finalScore: number
-  submittedCombinations: any[]
+  submittedCombinations: Combination[]
   maxPossibleScore: number
 }> = ({ finalScore, submittedCombinations, maxPossibleScore }) => {
   const scoreInfo = getScoreGrade(finalScore)

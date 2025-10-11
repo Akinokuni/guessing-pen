@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button } from '../design-system'
 import { useGameStore } from '../store/gameStore'
-import { GameState } from '../types'
+import { GameState, UserInfo } from '../types'
 
 interface NavigationProps {
   currentState: GameState
@@ -9,7 +9,7 @@ interface NavigationProps {
 }
 
 // 导航项配置
-const getNavItems = (userInfo: any) => [
+const getNavItems = (userInfo: UserInfo | null) => [
   {
     state: GameState.ONBOARDING,
     label: '开始',
@@ -36,9 +36,17 @@ const getNavItems = (userInfo: any) => [
   }
 ]
 
+// 导航项类型定义
+interface NavItem {
+  state: GameState
+  label: string
+  icon: string
+  show: boolean
+}
+
 // 桌面端导航菜单
 const DesktopNavMenu: React.FC<{
-  navItems: any[]
+  navItems: NavItem[]
   currentState: GameState
   onNavigation: (state: GameState) => void
 }> = ({ navItems, currentState, onNavigation }) => (
@@ -62,7 +70,7 @@ const DesktopNavMenu: React.FC<{
 
 // 移动端导航菜单
 const MobileNavMenu: React.FC<{
-  navItems: any[]
+  navItems: NavItem[]
   currentState: GameState
   onNavigation: (state: GameState) => void
 }> = ({ navItems, currentState, onNavigation }) => (
@@ -87,8 +95,8 @@ const MobileNavMenu: React.FC<{
 )
 
 // 用户信息显示
-const UserInfo: React.FC<{
-  userInfo: any
+const UserInfoDisplay: React.FC<{
+  userInfo: UserInfo | null
   finalScore: number | null
 }> = ({ userInfo, finalScore }) => {
   if (!userInfo) return null
@@ -156,7 +164,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
 
           {/* 用户信息 */}
-          <UserInfo userInfo={userInfo} finalScore={finalScore} />
+          <UserInfoDisplay userInfo={userInfo} finalScore={finalScore} />
         </div>
       </div>
     </nav>

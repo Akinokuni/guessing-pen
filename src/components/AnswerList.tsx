@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Card, Button } from '../design-system'
 import { useGameStore } from '../store/gameStore'
 import { submitAnswers } from '../services/api'
-import { GameState } from '../types'
+import { GameState, Combination } from '../types'
 
 // AnswerList 组件属性
 interface AnswerListProps {
@@ -25,7 +25,7 @@ const EmptyState: React.FC<{ className: string }> = ({ className }) => (
 
 // 答案组合项组件
 const CombinationItem: React.FC<{
-  combination: any
+  combination: Combination
   index: number
 }> = ({ combination, index }) => (
   <div className="p-3 bg-gray-50 rounded-lg border">
@@ -42,7 +42,7 @@ const CombinationItem: React.FC<{
     
     {/* 组合中的卡片 */}
     <div className="flex gap-2 justify-center">
-      {combination.cards.map((card: any, cardIndex: number) => (
+      {combination.cards.map((card, cardIndex: number) => (
         <Card
           key={`${index}-${cardIndex}`}
           card={card}
@@ -57,7 +57,7 @@ const CombinationItem: React.FC<{
 
 // 提交按钮组件
 const SubmitSection: React.FC<{
-  submittedCombinations: any[]
+  submittedCombinations: Combination[]
   isSubmitting: boolean
   onSubmit: () => void
 }> = ({ submittedCombinations, isSubmitting, onSubmit }) => {
