@@ -47,8 +47,8 @@ RUN apk add --no-cache \
 # 复制package文件和npm配置（利用Docker缓存层）
 COPY package*.json .npmrc ./
 
-# 安装依赖
-RUN npm ci --frozen-lockfile --no-audit --no-fund
+# 安装所有依赖（包括开发依赖，用于构建）
+RUN npm ci --include=dev --frozen-lockfile --no-audit --no-fund
 
 # 复制源代码
 COPY . .
@@ -58,8 +58,8 @@ ENV NODE_ENV=production
 ENV VITE_APP_VERSION=${VERSION}
 ENV VITE_BUILD_DATE=${BUILD_DATE}
 
-# 构建应用
-RUN npm run build
+# 构建应用（使用简化构建脚本）
+RUN npm run build:docker
 
 # 验证构建结果
 RUN ls -la dist/ && \
