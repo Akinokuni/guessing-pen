@@ -49,8 +49,8 @@ export class ScoringService {
   }
 
   // 验证单个组合的正确性
-  static validateCombination(combination: any) {
-    const cardIds = combination.cards.map((card: any) => card.id)
+  static validateCombination(combination: { cards: Array<{ id: string }>; aiMarkedCardId?: string | null }) {
+    const cardIds = combination.cards.map((card: { id: string }) => card.id)
     
     // 检查分组正确性
     const isGroupingCorrect = GAME_CONFIG.correctGroups.some(group => 

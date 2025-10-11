@@ -26,7 +26,7 @@ const GAME_CONFIG = {
 }
 
 // 验证三元组是否符合规则
-const validateTriple = (a: number, b: number, c: number): boolean => {
+const _validateTriple = (a: number, b: number, c: number): boolean => {
   const TARGET = 2025
   const LOW = 662
   const HIGH = 688

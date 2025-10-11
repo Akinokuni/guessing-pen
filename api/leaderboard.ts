@@ -54,7 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
     } else if (req.method === 'POST') {
       // 提交新的分数到排行榜
-      const { nickname, score, combinations } = req.body
+      const { nickname, score, combinations: _combinations } = req.body
       
       if (!nickname || typeof score !== 'number') {
         res.status(400).json({ error: 'Invalid data' })

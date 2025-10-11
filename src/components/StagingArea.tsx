@@ -1,6 +1,6 @@
 import React from 'react'
-import { Card, Button } from '../design-system'
-import { Combination } from '../types'
+import { Card as DesignCard, Button } from '../design-system'
+import { Combination, Card } from '../types'
 import { useGameStore } from '../store/gameStore'
 
 // StagingArea 组件属性
@@ -26,7 +26,7 @@ export const StagingArea: React.FC<StagingAreaProps> = ({ className = '' }) => {
     }
   }
 
-  const handleCardClick = (card: any) => {
+  const handleCardClick = (card: Card) => {
     // 在构建区点击卡片可以移除它
     removeSelectedCard(card.id)
   }
@@ -34,7 +34,7 @@ export const StagingArea: React.FC<StagingAreaProps> = ({ className = '' }) => {
   const handleSubmitCombination = () => {
     if (selectedCards.length === 3) {
       const combination: Combination = {
-        cards: selectedCards as [any, any, any],
+        cards: selectedCards as [Card, Card, Card],
         aiMarkedCardId
       }
       addCombination(combination)
@@ -70,7 +70,7 @@ export const StagingArea: React.FC<StagingAreaProps> = ({ className = '' }) => {
               }`}
             >
               {card ? (
-                <Card
+                <DesignCard
                   card={card}
                   selected={true}
                   aiMarked={aiMarkedCardId === card.id}
