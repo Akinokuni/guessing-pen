@@ -26,7 +26,26 @@ export const LeaderboardView: React.FC = () => {
     try {
       setLoading(true)
       const result = await getLeaderboard(20, 0)
-      setLeaderboard(result.data || [])
+      
+      // 折叠同一玩家的多次提交，只保留最高分
+      const playerBestScores = new Map<string, LeaderboardEntry>()
+      
+      result.data?.forEach((entry: LeaderboardEntry) => {
+        const existing = playerBestScores.get(entry.nickname)
+        if (!existing || entry.total_score > existing.total_score) {
+          playerBestScores.set(entry.nickname, entry)
+        }
+      })
+      
+      // 转换为数组并重新排序
+      const uniqueLeaderboard = Array.from(playerBestScores.values())
+        .sort((a, b) => b.total_score - a.total_score)
+        .map((entry, index) => ({
+          ...entry,
+          rank: index + 1
+        }))
+      
+      setLeaderboard(uniqueLeaderboard)
     } catch (err) {
       setError('获取排行榜失败')
       console.error('Leaderboard error:', err)
@@ -44,7 +63,7 @@ export const LeaderboardView: React.FC = () => {
       case 1: return '🥇'
       case 2: return '🥈'
       case 3: return '🥉'
-      default: return rank
+      default: return <span style={{ color: '#002B6D' }}>{rank}</span>
     }
   }
 
