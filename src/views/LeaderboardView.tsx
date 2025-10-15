@@ -74,7 +74,7 @@ export const LeaderboardView: React.FC = () => {
   const getPlayerRecords = (nickname: string) => {
     return allRecords
       .filter(record => record.nickname === nickname)
-      .sort((a, b) => b.total_score - a.total_score)
+      .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
   }
 
   const handleBackToGame = () => {
@@ -219,12 +219,6 @@ export const LeaderboardView: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className={`text-xl font-bold ${getScoreColor(entry.total_score)}`}>
-                              {entry.total_score}
-                            </div>
-                            <div className="text-sm text-accessible-text-secondary">分</div>
-                          </div>
                           {hasMultipleRecords && (
                             <button
                               onClick={() => togglePlayerExpand(entry.nickname)}
@@ -248,6 +242,12 @@ export const LeaderboardView: React.FC = () => {
                               </svg>
                             </button>
                           )}
+                          <div className="text-right">
+                            <div className={`text-xl font-bold ${getScoreColor(entry.total_score)}`}>
+                              {entry.total_score}
+                            </div>
+                            <div className="text-sm text-accessible-text-secondary">分</div>
+                          </div>
                         </div>
                       </div>
                     </div>
