@@ -103,6 +103,14 @@ export const useGameStore = create<GameStore>()(
   
   resetGame: () => {
     gameStorage.clearAll()
-    set(getInitialState())
+    set({
+      userInfo: null,
+      gameState: GameState.ONBOARDING,
+      availableCards: [],
+      selectedCards: [],
+      aiMarkedCardId: null,
+      submittedCombinations: [],
+      finalScore: null,
+    })
   },
 })))
