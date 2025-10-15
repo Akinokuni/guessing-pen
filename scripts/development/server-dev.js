@@ -122,6 +122,109 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// 提交答案API
+app.post('/api/db/players', async (req, res) => {
+  try {
+    console.log('👤 收到创建玩家请求:', req.body);
+    const { nickname } = req.body;
+    
+    // 检查玩家是否存在
+    const existingPlayer = await pool.query(
+      'SELECT * FROM players WHERE nickname = $1',
+      [nickname]
+    );
+    
+    if (existingPlayer.rows.length > 0) {
+      console.log('✅ 玩家已存在:', existingPlayer.rows[0]);
+      return res.json(existingPlayer.rows[0]);
+    }
+    
+    // 创建新玩家
+    const result = await pool.query(
+      'INSERT INTO players (nickname) VALUES ($1) RETURNING *',
+      [nickname]
+    );
+    
+    console.log('✅ 创建新玩家:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creating player:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/db/game_sessions', async (req, res) => {
+  try {
+    console.log('🎮 收到创建游戏会话请求:', req.body);
+    const { player_id } = req.body;
+    
+    const result = await pool.query(
+      'INSERT INTO game_sessions (player_id) VALUES ($1) RETURNING *',
+      [player_id]
+    );
+    
+    console.log('✅ 创建游戏会话:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creating game session:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/db/answer_combinations', async (req, res) => {
+  try {
+    console.log('📝 收到保存答案组合请求:', req.body);
+    const {
+      session_id,
+      card_ids,
+      ai_marked_card_id,
+      is_grouping_correct,
+      is_ai_detection_correct,
+      score
+    } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO answer_combinations 
+       (session_id, card_ids, ai_marked_card_id, is_grouping_correct, is_ai_detection_correct, score) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING *`,
+      [session_id, card_ids, ai_marked_card_id, is_grouping_correct, is_ai_detection_correct, score]
+    );
+    
+    console.log('✅ 保存答案组合:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error saving answer combination:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/db/game_sessions', async (req, res) => {
+  try {
+    console.log('🔄 收到更新游戏会话请求');
+    console.log('Query:', req.query);
+    console.log('Body:', req.body);
+    
+    const { id } = req.query;
+    const sessionId = id.replace('eq.', '');
+    const { total_score, combinations_count, completed_at } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE game_sessions 
+       SET total_score = $1, combinations_count = $2, completed_at = $3 
+       WHERE id = $4 
+       RETURNING *`,
+      [total_score, combinations_count, completed_at, sessionId]
+    );
+    
+    console.log('✅ 更新游戏会话:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error updating game session:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 启动服务器
 async function startServer() {
   console.log('\n🚀 启动开发服务器...');
